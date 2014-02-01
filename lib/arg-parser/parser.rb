@@ -35,6 +35,7 @@ class ArgParser
         def parse(tokens = nil)
             @show_usage = false
             @show_help = false
+            @errors = []
             tokens = ARGV unless tokens
             tokens = [] unless tokens
             pos_vals, kw_vals = classify_tokens(tokens)
@@ -151,7 +152,7 @@ class ArgParser
                 return
             end
             if !is_default && val.nil? && KeywordArgument === arg && !arg.value_optional?
-                self.errors << "No value was specified for argument '#{arg}'"
+                self.errors << "No value was specified for keyword argument '#{arg}'"
                 return
             end
 
