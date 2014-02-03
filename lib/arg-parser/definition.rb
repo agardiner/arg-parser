@@ -11,11 +11,16 @@ class ArgParser
         attr_accessor :purpose
 
 
+        # Create a new Definition, which is a collection of valid Arguments to
+        # be used when parsing a command-line.
         def initialize
             @arguments = {}
             @short_keys = {}
             @require_set = Hash.new{ |h,k| h[k] = [] }
             @title = $0.respond_to?(:titleize) ? $0.titleize : $0
+            puts self.inspect
+            puts block_given?
+            yield self if block_given?
         end
 
 
@@ -48,6 +53,30 @@ class ArgParser
         end
 
 
+        # Add a positional argument to the set of arguments in this command-line
+        # argument definition.
+        # @see PositionalArgument#new
+        def positional_arg(key, desc, opts = {}, &block)
+            self << ArgParser::PositionalArgument.new(key, desc, opts, &block)
+        end
+
+
+        # Add a keyword argument to the set of arguments in this command-line
+        # argument definition.
+        # @see KeywordArgument#new
+        def keyword_arg(key, desc, opts = {}, &block)
+            self << ArgParser::KeywordArgument.new(key, desc, opts, &block)
+        end
+
+
+        # Add a flag argument to the set of arguments in this command-line
+        # argument definition.
+        # @see FlagArgument#new
+        def flag_arg(key, desc, opts = {}, &block)
+            self << ArgParser::FlagArgument.new(key, desc, opts, &block)
+        end
+
+
         # Individual arguments are optional, but exactly one of +keys+ arguments
         # is required.
         def require_one_of(*keys)
@@ -65,6 +94,12 @@ class ArgParser
         # True if at least one argument is required out of multiple optional args.
         def requires_some?
             @require_set.size > 0
+        end
+
+
+        def parse(args = ARGV)
+            p = Parser.new(self)
+            p.parse(args)
         end
 
 
@@ -175,7 +210,11 @@ class ArgParser
         end
 
 
-        # Generates a more detailed help screen
+        # Generates a more detailed help screen.
+        # @param out [IO] an IO object on which the help information will be
+        #   output. Pass +nil+ if no output to any device is desired.
+        # @param width [Integer] the width at which to wrap text.
+        # @return [Array] An array of lines of text, containing the help text.
         def show_help(out = STDOUT, width = 80)
             lines = ['', '']
             lines << title
@@ -235,6 +274,9 @@ class ArgParser
         end
 
 
+        # Utility method for wrapping lines of +text+ at +width+ characters.
+        # @return [Array] an Array of lines of text, each no longer than +width+
+        #  characters.
         def wrap_text(text, width)
             if width > 0 && (text.length > width || text.index("\n"))
                 lines = []

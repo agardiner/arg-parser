@@ -1,35 +1,43 @@
 class ArgParser
 
     # Abstract base class of all command-line argument types.
+    #
+    # @abstract
     class Argument
 
-        # @return [Symbol] The key used to identify this argument value in the
-        # parsed command-line results Hash.
+        # The key used to identify this argument value in the  parsed command-
+        # line results Struct.
+        # @return [Symbol] the key/method by which this argument can be retrieved
+        #   from the parse result Struct.
         attr_reader :key
-        # @return [String] The description for this argument, used in the usage
-        # display.
+        # @return [String] the description for this argument, which will be shown
+        #   in the usage display.
         attr_reader :description
-        # @return [Symbol] The single letter or digit that can be used instead
-        # of the full key to identify this argument value.
+        # @return [Symbol] a single letter or digit that can be used as a short
+        #   alternative to the full key to identify an argument value in a command-
+        #   line.
         attr_reader :short_key
-        # @return [Boolean] Whether this argument is a required (i.e. mandatory)
+        # @return [Boolean] whether this argument is a required (i.e. mandatory)
         #   argument. Mandatory arguments that do not get specified result in a
         #   ParseException.
         attr_accessor :required
-        # @return [String] The default value for the argument, returned if no
-        # value is specified for this argument on the command-line.
+        # @return [String] the default value for the argument, returned in the
+        #   command-line parse results if no other value is specified.
         attr_accessor :default
-        # @return [Proc] The block to be called when the argument has been parsed.
-        # This block will be called with three arguments:
+        # An optional on_parse callback handler. The supplied block/Proc will be
+        # called after this argument has been parsed, with three arguments:
         #   @param [Argument] The Argument sub-class object that represents the
         #     argument that was parsed.
         #   @param [String] The value from the command-line that was entered for
         #     this argument.
         #   @param [Hash] The results Hash containing the argument keys and their
         #     values parsed so far.
+        # @return [Proc] the user supplied block to be called when the argument
+        #   has been parsed.
         attr_accessor :on_parse
-        # @return [Boolean] If true, a line-break is inserted before the argument
-        # description in the usage output.
+        # @return [String] a label to use for a new section of options in the
+        #   argument usage display. Should be specified on the first argument in
+        #   the group.
         attr_accessor :usage_break
 
         alias_method :required?, :required
@@ -55,7 +63,10 @@ class ArgParser
     end
 
 
-    # Abstract base class of arguments that take a value.
+    # Abstract base class of arguments that take a value (i.e. positional and
+    # keyword arguments).
+    #
+    # @abstract
     class ValueArgument < Argument
 
         # @return [Boolean] Flag indicating that the value for this argument is
@@ -76,7 +87,10 @@ class ArgParser
         attr_accessor :validation
         # @return [String] A label that will be used in the usage string printed
         #   for this ValueArgument. If not specified, defaults to the upper-case
-        #   of the argument key.
+        #   value of the argument key. For example, if the argument key is :foo_bar,
+        #   the default usage value for this argument would be FOO-BAR, as in:
+        #     Usage:
+        #       my-prog.rb FOO-BAR
         attr_accessor :usage_value
 
         alias_method :sensitive?, :sensitive
@@ -88,7 +102,7 @@ class ArgParser
             super(key, desc, opts, &block)
             @sensitive = opts[:sensitive]
             @validation = opts[:validation]
-            @usage_value = opts.fetch(:usage_value, key.to_s.upcase)
+            @usage_value = opts.fetch(:usage_value, key.to_s.gsub('_', '-').upcase)
         end
 
     end
@@ -104,10 +118,14 @@ class ArgParser
             @required = opts.fetch(:required, true)
         end
 
+        # @return [String] the word that will appear in the help display for
+        #   this argument.
         def to_s
             usage_value
         end
 
+        # @return [String] The string for this argument position in a command-line.
+        #  usage display.
         def to_use
             required? ? usage_value : "[#{usage_value}]"
         end
@@ -120,11 +138,32 @@ class ArgParser
     # mandatory arguments where there is no natural ordering of arguments.
     class KeywordArgument < ValueArgument
 
+        # Whether the keyword argument must be specified with a non-missing
+        # value.
+        # @return [Boolean] true if the keyword can be specified without a value.
         attr_accessor :value_optional
 
         alias_method :value_optional?, :value_optional
 
 
+        # Creates a KeywordArgument, which is an argument that must be specified
+        # on a command-line using either a long form key (i.e. --key), or
+        # optionally, a short-form key (i.e. -k) should one be defined for this
+        # argument.
+        # @param key [Symbol] the key that will be used to identify this argument
+        #   value in the parse results.
+        # @param desc [String] the description of this argument, displayed in the
+        #   generated help screen.
+        # @param opts [Hash] a hash of options that govern the behaviour of this
+        #   argument.
+        # @option opts [Boolean] :required whether the keyword argument is a required
+        #   argument that must appear in the command-line. Defaults to false.
+        # @option opts [Boolean] :value_optional whether the keyword argument can be
+        #   specified without a value. For example, a keyword argument might
+        #   be used both as a flag, and to override a default value. Specifying
+        #   the argument without a value would signify that the option is set,
+        #   but the default value for the option should be used. Defaults to
+        #   false (keyword argument cannot be specified without a value).
         def initialize(key, desc, opts = {}, &block)
             super(key, desc, opts, &block)
             @required = opts.fetch(:required, false)
