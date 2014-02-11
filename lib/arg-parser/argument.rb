@@ -99,7 +99,7 @@ class ArgParser
         private
 
         def initialize(key, desc, opts = {}, &block)
-            super(key, desc, opts, &block)
+            super
             @sensitive = opts[:sensitive]
             @validation = opts[:validation]
             @usage_value = opts.fetch(:usage_value, key.to_s.gsub('_', '-').upcase)
@@ -114,7 +114,7 @@ class ArgParser
     class PositionalArgument < ValueArgument
 
         def initialize(key, desc, opts = {}, &block)
-            super(key, desc, opts, &block)
+            super
             @required = opts.fetch(:required, true)
         end
 
@@ -165,7 +165,7 @@ class ArgParser
         #   but the default value for the option should be used. Defaults to
         #   false (keyword argument cannot be specified without a value).
         def initialize(key, desc, opts = {}, &block)
-            super(key, desc, opts, &block)
+            super
             @required = opts.fetch(:required, false)
             @value_optional = opts.fetch(:value_optional, false)
         end
@@ -192,7 +192,7 @@ class ArgParser
     class FlagArgument < Argument
 
         def initialize(key, desc, opts = {}, &block)
-            super(key, desc, opts, &block)
+            super
         end
 
         def required
@@ -206,6 +206,33 @@ class ArgParser
         def to_use
             sk = short_key ? "-#{short_key}, " : ''
             "#{sk}#{self.to_s}"
+        end
+
+    end
+
+
+    # A command-line argument that takes 0 to N values from the command-line.
+    class RestArgument < ValueArgument
+
+        def initialize(key, desc, opts = {}, &block)
+            super
+            @min_values = opts.fetch(:min_values, opts.fetch(:required, true) ? 1 : 0)
+        end
+
+        def required
+          @min_values > 0
+        end
+
+        # @return [String] the word that will appear in the help display for
+        #   this argument.
+        def to_s
+            usage_value
+        end
+
+        # @return [String] The string for this argument position in a command-line.
+        #  usage display.
+        def to_use
+            required? ? "#{usage_value} [...]" : "[#{usage_value} [...]]"
         end
 
     end

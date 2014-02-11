@@ -38,17 +38,21 @@ class ArgParser
         #   line definition.
         def <<(arg)
             case arg
-            when PositionalArgument, KeywordArgument, FlagArgument
+            when PositionalArgument, KeywordArgument, FlagArgument, RestArgument
                 if @arguments[arg.key]
                     raise ArgumentError, "An argument with key '#{arg.key}' has already been defined"
                 end
                 if arg.short_key && @short_keys[arg.short_key]
                     raise ArgumentError, "An argument with short key '#{arg.short_key}' has already been defined"
                 end
+                if rest_args
+                    raise ArgumentError, "Only one rest argument can be defined"
+                end
                 @arguments[arg.key] = arg
                 @short_keys[arg.short_key] = arg if arg.short_key
             else
-                raise ArgumentError, "arg must be an instance of PositionalArgument, KeywordArgument, or FlagArgument"
+                raise ArgumentError, "arg must be an instance of PositionalArgument, KeywordArgument, " +
+                    "FlagArgument or RestArgument"
             end
         end
 
@@ -77,6 +81,14 @@ class ArgParser
         end
 
 
+        # Add a rest argument to the set of arguments in this command-line
+        # argument definition.
+        # @see RestArgument#new
+        def rest_arg(key, desc, opts = {}, &block)
+            self << ArgParser::RestArgument.new(key, desc, opts, &block)
+        end
+
+
         # Individual arguments are optional, but exactly one of +keys+ arguments
         # is required.
         def require_one_of(*keys)
@@ -97,9 +109,16 @@ class ArgParser
         end
 
 
+        # @return [Parser] a Parser instance that can be used to parse this
+        #   command-line Definition.
+        def parser
+            @parser ||= Parser.new(self)
+        end
+
+
+        # Parse the +args+ array of arguments using this command-line definition.
         def parse(args = ARGV)
-            p = Parser.new(self)
-            p.parse(args)
+            parser.parse(args)
         end
 
 
@@ -146,49 +165,63 @@ class ArgParser
         end
 
 
-        # Returns the non-positional arguments that have been defined
+        # @return [Array] the non-positional arguments that have been defined
         def non_positional_args
-            @arguments.values.reject{ |arg| PositionalArgument === arg }
+            @arguments.values.reject{ |arg| PositionalArgument === arg || RestArgument === arg }
         end
 
 
-        # True if any non-positional arguments have been defined
+        # @return True if any non-positional arguments have been defined.
         def non_positional_args?
             non_positional_args.size > 0
         end
 
 
-        # Returns the keyword arguments that have been defined
+        # @return [Array] the keyword arguments that have been defined.
         def keyword_args
             @arguments.values.select{ |arg| KeywordArgument === arg }
         end
 
 
-        # True if any keyword arguments have been defined
+        # @return True if any keyword arguments have been defined.
         def keyword_args?
             keyword_args.size > 0
         end
 
 
-        # Returns the flag arguments that have been defined
+        # @eturn [Array] the flag arguments that have been defined
         def flag_args
             @arguments.values.select{ |arg| FlagArgument === arg }
         end
 
 
-        # True if any flag arguments have been defined
+        # @return True if any flag arguments have been defined.
         def flag_args?
             flag_args.size > 0
         end
 
 
-        # Returns the positional and keyword arguments that have been defined
+        # @return [RestArgument] the RestArgument defined for this command-line,
+        #   or nil if no RestArgument is defined.
+        def rest_args
+            @arguments.values.find{ |arg| RestArgument === arg }
+        end
+
+
+        # @return True if a RestArgument has been defined.
+        def rest_args?
+            !!rest_args
+        end
+
+
+        # @return [ValueArgument] the positional, keyword, and rest arguments
+        #   that have been defined
         def value_args
             @arguments.values.select{ |arg| ValueArgument === arg }
         end
 
 
-        # Returns the number of arguments that have been defined
+        # @return [Integer] the number of arguments that have been defined
         def size
             @arguments.size
         end
@@ -201,6 +234,7 @@ class ArgParser
             opt_args = size - pos_args.size
             usage_args = pos_args.map(&:to_use)
             usage_args << (requires_some? ? 'OPTIONS' : '[OPTIONS]') if opt_args > 0
+            usage_args << rest_args.to_use if rest_args?
             lines.concat(wrap_text("USAGE: #{RUBY_ENGINE} #{$0} #{usage_args.join(' ')}", width))
             lines << ''
             lines << 'Specify the /? or --help option for more detailed help'
@@ -232,12 +266,15 @@ class ArgParser
             opt_args = size - pos_args.size
             usage_args = pos_args.map(&:to_use)
             usage_args << (requires_some? ? 'OPTIONS' : '[OPTIONS]') if opt_args > 0
+            usage_args << rest_args.to_use if rest_args?
             lines.concat(wrap_text("  #{RUBY_ENGINE} #{$0} #{usage_args.join(' ')}", width))
             lines << ''
 
             if positional_args?
                 max = positional_args.map{ |a| a.to_s.length }.max
-                positional_args.each do |arg|
+                pos_args = positional_args
+                pos_args << rest_args if rest_args?
+                pos_args.each do |arg|
                     if arg.usage_break
                         lines << ''
                         lines << arg.usage_break
@@ -276,7 +313,7 @@ class ArgParser
 
         # Utility method for wrapping lines of +text+ at +width+ characters.
         # @return [Array] an Array of lines of text, each no longer than +width+
-        #  characters.
+        #   characters.
         def wrap_text(text, width)
             if width > 0 && (text.length > width || text.index("\n"))
                 lines = []

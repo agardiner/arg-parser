@@ -28,6 +28,10 @@ class ArgParser
                 args_def.flag_arg(key, desc, opts, &block)
             end
 
+            def rest_arg(key, desc, opts = {}, &block)
+                args_def.rest_arg(key, desc, opts, &block)
+            end
+
             def require_one_of(*keys)
                 args_def.require_one_of(*keys)
             end

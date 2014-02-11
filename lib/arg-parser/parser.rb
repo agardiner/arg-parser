@@ -21,6 +21,14 @@ class ArgParser
         attr_reader :show_help
 
 
+        # Instantiates a new command-line parser, with the specified command-
+        # line definition. A Parser instance delegates unknown methods to the
+        # Definition, so its possible to work only with a Parser instance to
+        # both define and parse a command-line.
+        #
+        # @param [Definition] A Definition object that defines the possible
+        #   arguments that may appear in a command-line. If no definition is
+        #   supplied, an empty definition is created.
         def initialize(definition = nil)
             @definition = definition || Definition.new
             @errors = []
@@ -32,19 +40,22 @@ class ArgParser
         # with accessors for every defined argument. Arguments whose values are
         # not specified will contain the agument default value, or nil if no
         # default is specified.
-        def parse(tokens = nil)
+        def parse(tokens = ARGV)
             @show_usage = false
             @show_help = false
             @errors = []
-            tokens = ARGV unless tokens
+            if tokens.is_a?(String)
+                require 'csv'
+                tokens = CSV.parse(tokens, col_sep: ' ').first
+            end
             tokens = [] unless tokens
-            pos_vals, kw_vals = classify_tokens(tokens)
-            args = process_args(pos_vals, kw_vals) unless @show_help
+            pos_vals, kw_vals, rest_vals = classify_tokens(tokens)
+            args = process_args(pos_vals, kw_vals, rest_vals) unless @show_help
             (@show_usage || @show_help) ? false : args
         end
 
 
-        # Delegate unknown methods to the argument definition
+        # Delegate unknown methods to the associated argument Definition object.
         def method_missing(mthd, *args)
             if @definition.respond_to?(mthd)
                 @definition.send(mthd, *args)
@@ -65,6 +76,7 @@ class ArgParser
         def classify_tokens(tokens)
             pos_vals = []
             kw_vals = {}
+            rest_vals = []
 
             arg = nil
             tokens.each_with_index do |token, i|
@@ -87,6 +99,11 @@ class ArgParser
                         kw_vals[arg] = $1 ? false : true
                         arg = nil
                     end
+                when '--'
+                    # All subsequent values are rest args
+                    kw_vals[arg] = nil if arg
+                    rest_vals = tokens[(i + 1)..-1]
+                    break
                 else
                     if arg
                         kw_vals[arg] = token
@@ -99,13 +116,13 @@ class ArgParser
                 end
             end
             kw_vals[arg] = nil if arg
-            [pos_vals, kw_vals]
+            [pos_vals, kw_vals, rest_vals]
         end
 
 
         # Process arguments using the supplied +pos_vals+ Array of positional
         # argument values, and the +kw_vals+ Hash of keyword/value.
-        def process_args(pos_vals, kw_vals)
+        def process_args(pos_vals, kw_vals, rest_vals)
             result = {}
 
             # Process positional arguments
@@ -116,15 +133,28 @@ class ArgParser
                 result[arg.key] = val
             end
             if pos_vals.size > pos_args.size
-                self.errors << "#{pos_vals.size} positional #{pos_vals.size == 1 ? 'argument' : 'arguments'} #{
-                    pos_vals.size == 1 ? 'was' : 'were'} supplied, but only #{pos_args.size} #{
-                    pos_args.size == 1 ? 'is' : 'are'} defined"
+                if @definition.rest_args?
+                    rest_vals = pos_vals[pos_args.size..-1] + rest_vals
+                else
+                    self.errors << "#{pos_vals.size} positional #{pos_vals.size == 1 ? 'argument' : 'arguments'} #{
+                        pos_vals.size == 1 ? 'was' : 'were'} supplied, but only #{pos_args.size} #{
+                        pos_args.size == 1 ? 'is' : 'are'} defined"
+                end
             end
 
             # Process key-word based arguments
             kw_vals.each do |arg, val|
                 val = process_arg_val(arg, val, result)
                 result[arg.key] = val
+            end
+
+            # Process rest values
+            if arg = @definition.rest_args
+                val = process_arg_val(arg, rest_vals, result)
+                result[arg.key] = val
+            elsif rest_vals.size > 0
+                self.errors << "#{rest_vals.size} rest #{rest_vals.size == 1 ? 'value' : 'values'} #{
+                    rest_vals.size == 1 ? 'was' : 'were'} supplied, but no rest argument is defined"
             end
 
             # Default unspecified arguments
@@ -147,7 +177,7 @@ class ArgParser
 
         # Process a single argument value
         def process_arg_val(arg, val, hsh, is_default = false)
-            if is_default && arg.required? && val.nil?
+            if is_default && arg.required? && (val.nil? || val.empty?)
                 self.errors << "No value was specified for required argument '#{arg}'"
                 return
             end
@@ -159,12 +189,17 @@ class ArgParser
             # Argument value validation
             if ValueArgument === arg && arg.validation && val
                 valid = case arg.validation
-                when Regexp then val =~ arg.validation
+                when Regexp
+                    [val].flatten.each do |v|
+                        add_value_error(arg, val) unless v =~ arg.validation
+                    end
+                when Array
+                    [val].flatten.each do |v|
+                        add_value_error(arg, val) unless arg.validation.include?(v)
+                    end
                 when Proc then arg.validation.call(val)
-                when Array then arg.validation.include?(val)
                 else raise "Unknown validation type: #{arg.validation.class.name}"
                 end
-                self.errors << "The value '#{val}' is not valid for argument '#{arg}'" unless valid
             end
 
             # TODO: Argument value coercion
@@ -174,6 +209,11 @@ class ArgParser
 
             # Return result
             val
+        end
+
+
+        def add_value_error(arg, val)
+            self.errors << "The value '#{val}' is not valid for argument '#{arg}'"
         end
 
     end
