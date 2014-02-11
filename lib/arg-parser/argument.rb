@@ -1,4 +1,5 @@
-class ArgParser
+# Namespace for classes defined by ArgParser, the command-line argument parser.
+module ArgParser
 
     # Abstract base class of all command-line argument types.
     #
@@ -113,6 +114,28 @@ class ArgParser
     # typically used when there are a small number of mandatory arguments.
     class PositionalArgument < ValueArgument
 
+        # Creates a new positional argument, which is an argument value that may
+        # be specified without a keyword, in which case it is matched to the
+        # available positional arguments by its position on the command-line.
+        #
+        # @param [Symbol] key The name that will be used for the accessor used
+        #   to return this argument value in the parse results.
+        # @param [String] desc A description for this argument. Appears in the
+        #   help output that is generated when the user specifies the --help or
+        #   /? flags on the command-line.
+        # @param [Hash] opts Contains any options that are desired for this
+        #   argument.
+        # @yield [arg, val, hsh] If supplied, the block passed will be invoked
+        #   after this argument value has been parsed from the command-line.
+        #   Blocks are usually used when the value to be returned needs to be
+        #   converted from a String to some other type.
+        # @yieldparam arg [PositionalArgument] this argument definition
+        # @yieldparam val [String] the String value read from the command-line
+        #   for this argument
+        # @yieldparam hsh [Hash] a Hash containing the argument values parsed
+        #   so far.
+        # @yieldreturn [Object] the return value from the block will be used as
+        #   the argument value  parsed from the command-line for this argument.
         def initialize(key, desc, opts = {}, &block)
             super
             @required = opts.fetch(:required, true)
@@ -124,8 +147,8 @@ class ArgParser
             usage_value
         end
 
-        # @return [String] The string for this argument position in a command-line.
-        #  usage display.
+        # @return [String] the string for this argument position in a command-line
+        #   usage display.
         def to_use
             required? ? usage_value : "[#{usage_value}]"
         end
@@ -191,6 +214,24 @@ class ArgParser
     # specified to disable the normally enabled --export flag.
     class FlagArgument < Argument
 
+        # Creates a new flag argument, which is an argument with a boolean value.
+        #
+        # @param [Symbol] key The name that will be used for the accessor used
+        #   to return this argument value in the parse results.
+        # @param [String] desc A description for this argument. Appears in the
+        #   help output that is generated when the user specifies the --help or
+        #   /? flags on the command-line.
+        # @param [Hash] opts Contains any options that are desired for this
+        #   argument.
+        # @param [Block] block If supplied, the block passed will be invoked
+        #   after this argument value has been parsed from the command-line.
+        #   The block will be called with three arguments: this argument
+        #   definition, the String value read from the command-line for this
+        #   argument, and a Hash containing the argument values parsed so far.
+        #   The return value from the block will be used as the argument value
+        #   parsed from the command-line for this argument. Blocks are usually
+        #   used when the value to be returned needs to be converted from a
+        #   String to some other type.
         def initialize(key, desc, opts = {}, &block)
             super
         end
@@ -214,6 +255,25 @@ class ArgParser
     # A command-line argument that takes 0 to N values from the command-line.
     class RestArgument < ValueArgument
 
+        # Creates a new rest argument, which is an argument that consumes all
+        # remaining positional argument values.
+        #
+        # @param [Symbol] key The name that will be used for the accessor used
+        #   to return this argument value in the parse results.
+        # @param [String] desc A description for this argument. Appears in the
+        #   help output that is generated when the user specifies the --help or
+        #   /? flags on the command-line.
+        # @param [Hash] opts Contains any options that are desired for this
+        #   argument.
+        # @param [Block] block If supplied, the block passed will be invoked
+        #   after this argument value has been parsed from the command-line.
+        #   The block will be called with three arguments: this argument
+        #   definition, the String value read from the command-line for this
+        #   argument, and a Hash containing the argument values parsed so far.
+        #   The return value from the block will be used as the argument value
+        #   parsed from the command-line for this argument. Blocks are usually
+        #   used when the value to be returned needs to be converted from a
+        #   String to some other type.
         def initialize(key, desc, opts = {}, &block)
             super
             @min_values = opts.fetch(:min_values, opts.fetch(:required, true) ? 1 : 0)

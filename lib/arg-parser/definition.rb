@@ -1,4 +1,4 @@
-class ArgParser
+module ArgParser
 
     # Represents the collection of possible command-line arguments for a script.
     class Definition
@@ -189,7 +189,7 @@ class ArgParser
         end
 
 
-        # @eturn [Array] the flag arguments that have been defined
+        # @return [Array] the flag arguments that have been defined
         def flag_args
             @arguments.values.select{ |arg| FlagArgument === arg }
         end

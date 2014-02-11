@@ -1,4 +1,4 @@
-class ArgParser
+module ArgParser
 
     # Exception class for command-line parse errors
     class ParseException < RuntimeError; end
@@ -26,9 +26,9 @@ class ArgParser
         # Definition, so its possible to work only with a Parser instance to
         # both define and parse a command-line.
         #
-        # @param [Definition] A Definition object that defines the possible
-        #   arguments that may appear in a command-line. If no definition is
-        #   supplied, an empty definition is created.
+        # @param [Definition] definition A Definition object that defines the
+        #   possible arguments that may appear in a command-line. If no definition
+        #   is supplied, an empty definition is created.
         def initialize(definition = nil)
             @definition = definition || Definition.new
             @errors = []
