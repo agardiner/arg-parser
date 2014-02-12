@@ -4,7 +4,7 @@ module ArgParser
     class Definition
 
         # @return [String] A title for the script, displayed at the top of the
-        #   usage information.
+        #   usage and help outputs.
         attr_accessor :title
         # @return [String] A short description of the purpose of the script, for
         #   display when showing the usage help.
@@ -18,17 +18,24 @@ module ArgParser
             @short_keys = {}
             @require_set = Hash.new{ |h,k| h[k] = [] }
             @title = $0.respond_to?(:titleize) ? $0.titleize : $0
-            puts self.inspect
-            puts block_given?
             yield self if block_given?
         end
 
 
-        # Returns the argument with the specified key
+        # @return [Argument] the argument for the given key if it exists, or nil
+        #   if it does not.
+        def has_key?(key)
+            k = Argument.to_key(key)
+            arg = @arguments[k] || @short_keys[k]
+        end
+
+
+        # @return [Argument] the argument with the specified key
+        # @raise [ArgumentError] if no argument has been defined with the
+        #   specified key.
         def [](key)
-            k = key.to_s.downcase.gsub('-', '_').intern
-            arg = @arguments[k] || @short_keys[key.intern]
-            arg or raise ArgumentError, "No argument defined for key '#{k}'"
+            arg = has_key?(key)
+            arg or raise ArgumentError, "No argument defined for key '#{Argument.to_key(key)}'"
         end
 
 
@@ -59,7 +66,7 @@ module ArgParser
 
         # Add a positional argument to the set of arguments in this command-line
         # argument definition.
-        # @see PositionalArgument#new
+        # @see PositionalArgument#initialize
         def positional_arg(key, desc, opts = {}, &block)
             self << ArgParser::PositionalArgument.new(key, desc, opts, &block)
         end
@@ -67,7 +74,7 @@ module ArgParser
 
         # Add a keyword argument to the set of arguments in this command-line
         # argument definition.
-        # @see KeywordArgument#new
+        # @see KeywordArgument#initialize
         def keyword_arg(key, desc, opts = {}, &block)
             self << ArgParser::KeywordArgument.new(key, desc, opts, &block)
         end
@@ -75,7 +82,7 @@ module ArgParser
 
         # Add a flag argument to the set of arguments in this command-line
         # argument definition.
-        # @see FlagArgument#new
+        # @see FlagArgument#initialize
         def flag_arg(key, desc, opts = {}, &block)
             self << ArgParser::FlagArgument.new(key, desc, opts, &block)
         end
@@ -83,7 +90,7 @@ module ArgParser
 
         # Add a rest argument to the set of arguments in this command-line
         # argument definition.
-        # @see RestArgument#new
+        # @see RestArgument#initialize
         def rest_arg(key, desc, opts = {}, &block)
             self << ArgParser::RestArgument.new(key, desc, opts, &block)
         end
@@ -117,6 +124,14 @@ module ArgParser
 
 
         # Parse the +args+ array of arguments using this command-line definition.
+        #
+        # @param args [Array, String] an array of arguments, or a String representing
+        #   the command-line that is to be parsed.
+        # @return [OpenStruct, false] if successful, an OpenStruct object with all
+        # arguments defined as accessors, and the parsed or default values for each
+        # argument as values. If unsuccessful, returns false indicating a parse
+        # failure.
+        # @see Parser#parse, Parser#errors, Parser#show_usage, Parser#show_help
         def parse(args = ARGV)
             parser.parse(args)
         end
@@ -125,6 +140,11 @@ module ArgParser
         # Validates the supplied +args+ Hash object, verifying that any argument
         # set requirements have been satisfied. Returns an array of error
         # messages for each set requirement that is not satisfied.
+        #
+        # @param args [Hash] a Hash containing the keys and values identified
+        #   by the parser.
+        # @return [Array] a list of errors for any argument requirements that
+        #   have not been satisfied.
         def validate_requirements(args)
             errors = []
             @require_set.each do |req, sets|
@@ -147,25 +167,27 @@ module ArgParser
             errors
         end
 
-        # Returns all arguments that have been defined
+
+        # @return [Array] all arguments that have been defined.
         def args
             @arguments.values
         end
 
 
-        # Returns the positional arguments that have been defined
+        # @return [Array] all positional arguments that have been defined
         def positional_args
             @arguments.values.select{ |arg| PositionalArgument === arg }
         end
 
 
-        # True if any positional arguments have been defined
+        # @return True if any positional arguments have been defined.
         def positional_args?
             positional_args.size > 0
         end
 
 
-        # @return [Array] the non-positional arguments that have been defined
+        # @return [Array] the non-positional (i.e. keyword and flag)
+        #    arguments that have been defined.
         def non_positional_args
             @arguments.values.reject{ |arg| PositionalArgument === arg || RestArgument === arg }
         end
@@ -214,14 +236,14 @@ module ArgParser
         end
 
 
-        # @return [ValueArgument] the positional, keyword, and rest arguments
-        #   that have been defined
+        # @return [Array] all the positional, keyword, and rest arguments
+        #   that have been defined.
         def value_args
             @arguments.values.select{ |arg| ValueArgument === arg }
         end
 
 
-        # @return [Integer] the number of arguments that have been defined
+        # @return [Integer] the number of arguments that have been defined.
         def size
             @arguments.size
         end
@@ -312,6 +334,10 @@ module ArgParser
 
 
         # Utility method for wrapping lines of +text+ at +width+ characters.
+        #
+        # @param text [String] a string of text that is to be wrapped to a
+        #   maximum width.
+        # @param width [Integer] the maximum length of each line of text.
         # @return [Array] an Array of lines of text, each no longer than +width+
         #   characters.
         def wrap_text(text, width)

@@ -43,11 +43,22 @@ module ArgParser
 
         alias_method :required?, :required
 
+        # Converts an argument key specification into a valid key, by stripping
+        # leading dashes, converting remaining dashes to underscores, and lower-
+        # casing all text. This is required to ensure the key name will be a
+        # valid accessor name on the parse results.
+        #
+        # @return [Symbol] the key by which an argument can be retrieved from
+        #   the arguments definition, and the parse results.
+        def self.to_key(label)
+            label.to_s.gsub(/^-+/, '').gsub('-', '_').downcase.intern
+        end
+
 
         private
 
         def initialize(key, desc, opts = {}, &block)
-            @key = key.to_s.downcase.intern
+            @key = self.class.to_key(key)
             @description = desc
             @default = opts[:default]
             @on_parse = block || opts[:on_parse]
