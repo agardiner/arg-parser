@@ -41,6 +41,11 @@ module ArgParser
                 @args_def ||= ArgParser::Definition.new
             end
 
+            # Returns true if any arguments have been defined
+            def args_defined?
+                @args_def && @args_def.args.size > 0
+            end
+
             # Sets the title that will appear in the Usage output generated from
             # the Definition.
             def title(val)
