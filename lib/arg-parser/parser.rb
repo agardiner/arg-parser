@@ -15,10 +15,14 @@ module ArgParser
         attr_reader :errors
         # @return [Boolean] Flag set during parsing if the usage display should
         #   be shown. Set if there are any parse errors encountered.
-        attr_reader :show_usage
+        def show_usage?
+            @show_usage
+        end
         # @return [Boolean] Flag set during parsing if the user has requested
         #   the help display to be shown (via --help or /?).
-        attr_reader :show_help
+        def show_help?
+            @show_help
+        end
 
 
         # Instantiates a new command-line parser, with the specified command-
@@ -41,8 +45,8 @@ module ArgParser
         # not specified will contain the agument default value, or nil if no
         # default is specified.
         def parse(tokens = ARGV)
-            @show_usage = false
-            @show_help = false
+            @show_usage = nil
+            @show_help = nil
             @errors = []
             if tokens.is_a?(String)
                 require 'csv'
@@ -63,9 +67,6 @@ module ArgParser
                 super
             end
         end
-
-
-        protected
 
 
         # Evaluate the list of values in +tokens+, and classify them as either
@@ -175,6 +176,9 @@ module ArgParser
         end
 
 
+        protected
+
+
         # Process a single argument value
         def process_arg_val(arg, val, hsh, is_default = false)
             if is_default && arg.required? && (val.nil? || val.empty?)
@@ -197,8 +201,10 @@ module ArgParser
                     [val].flatten.each do |v|
                         add_value_error(arg, val) unless arg.validation.include?(v)
                     end
-                when Proc then arg.validation.call(val)
-                else raise "Unknown validation type: #{arg.validation.class.name}"
+                when Proc
+                    arg.validation.call(arg, val, hsh)
+                else
+                    raise "Unknown validation type: #{arg.validation.class.name}"
                 end
             end
 
@@ -212,6 +218,7 @@ module ArgParser
         end
 
 
+        # Add an error for an invalid value
         def add_value_error(arg, val)
             self.errors << "The value '#{val}' is not valid for argument '#{arg}'"
         end

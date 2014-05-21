@@ -137,6 +137,27 @@ module ArgParser
         end
 
 
+        # Return an array of parse errors.
+        # @see Parser#errors
+        def errors
+            parser.errors
+        end
+
+
+        # Whether user indicated they would like help on usage.
+        # @see Parser#show_usage
+        def show_usage?
+            parser.show_usage?
+        end
+
+
+        # Whether user indicated they would like help on supported arguments.
+        # @see Parser#show_help
+        def show_help?
+            parser.show_help?
+        end
+
+
         # Validates the supplied +args+ Hash object, verifying that any argument
         # set requirements have been satisfied. Returns an array of error
         # messages for each set requirement that is not satisfied.

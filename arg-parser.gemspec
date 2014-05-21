@@ -6,8 +6,8 @@ Gem::Specification.new do |s|
     s.summary = "ArgParser is a simple, yet powerful, command-line argument (option) parser"
     s.description = <<-EOQ
         ArgParser is a simple, yet powerful command-line argument parser, with
-        support for positional, keyword, and flag arguments, any of which may be
-        optional or mandatory.
+        support for positional, keyword, flag and rest arguments, any of which
+        may be optional or mandatory.
     EOQ
     s.email = "adam.b.gardiner@gmail.com"
     s.require_paths = ['lib']

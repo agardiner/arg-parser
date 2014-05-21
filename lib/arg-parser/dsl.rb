@@ -59,22 +59,32 @@ module ArgParser
                 args_def.positional_arg(key, desc, opts, &block)
             end
 
+            # Define a new positional argument.
+            # @see KeywordArgument#initialize
             def keyword_arg(key, desc, opts = {}, &block)
                 args_def.keyword_arg(key, desc, opts, &block)
             end
 
+            # Define a new flag argument.
+            # @see FlagArgument#initialize
             def flag_arg(key, desc, opts = {}, &block)
                 args_def.flag_arg(key, desc, opts, &block)
             end
 
+            # Define a rest argument.
+            # @see RestArgument#initialize
             def rest_arg(key, desc, opts = {}, &block)
                 args_def.rest_arg(key, desc, opts, &block)
             end
 
+            # Make exactly one of the specified arguments mandatory.
+            # @see Definition#require_one_of
             def require_one_of(*keys)
                 args_def.require_one_of(*keys)
             end
 
+            # Make one or more of the specified arguments mandatory.
+            # @see Definition#require_any_of
             def require_any_of(*keys)
                 args_def.require_any_of(*keys)
             end
@@ -92,6 +102,37 @@ module ArgParser
         # on the class to define the arguments to parse.
         def parse_arguments(args = ARGV)
           self.class.args_def.parse(args)
+        end
+
+
+        # Defines a +parse_errors+ instance method to be added to classes that
+        # include this module.
+        def parse_errors
+            self.class.args_def.errors
+        end
+
+
+        # Whether usage information should be displayed.
+        def show_usage?
+            self.class.args_def.show_usage?
+        end
+
+
+        # Whether help should be displayed.
+        def show_help?
+            self.class.args_def.show_usage?
+        end
+
+
+        # Outputs brief usgae details.
+        def show_usage(*args)
+            self.class.args_def.show_usage(*args)
+        end
+
+
+        # Outputs detailed help about available arguments.
+        def show_help(*args)
+            self.class.args_def.show_help(*args)
         end
 
     end
