@@ -1,66 +1,70 @@
 require 'arg-parser'
+require 'test/unit'
 
 
-
-class Test
+class TestParser < Test::Unit::TestCase
 
     include ArgParser::DSL
 
     title 'FooBar Tester'
-    purpose 'To test the fubar-ness of Google flawgic'
-    positional_arg :flawgic2, 'Google flawgic - part 2'
-    keyword_arg :flawgic, 'Google flawgic', short_key: 'f'
-    flag_arg :foo, 'Morr fubar', short_key: 'm'
+    purpose 'To test the fubar-ness of stuff'
+    positional_arg :foo, 'Foo arg'
+    keyword_arg :bar, 'Bar arg', short_key: 'b'
+    flag_arg :baz, 'Baz arg', short_key: 'z'
     rest_arg :files, 'List of files to process with fubar', required: false
 
-    COMMAND_LINE = ArgParser::Definition.new do |d|
-        d.title = 'Sudoku Solver'
-        d.purpose = 'Solves Sudoku puzzles from input grids'
-        d.keyword_arg :difficulty, 'The rated difficulty of the Sudoku puzzle'
-        d.flag_arg :debug, 'Output debug info'
+    def test_parse_positional
+        res = parse_arguments('Here')
+        assert_equal('Here', res.foo)
+        assert_nil(res.bar)
+        assert_nil(res.baz)
+        assert_equal([], res.files)
     end
 
-    def parse(argv)
-        @parser = ArgParser::Parser.new(self.class.args_def)
-        @parser.parse(argv)
+    def test_parse_with_flag
+        res = parse_arguments(['Here', '--baz'])
+        assert_equal('Here', res.foo)
+        assert_nil(res.bar)
+        assert(res.baz)
+        assert_equal([], res.files)
     end
 
-    def errors
-        @parser.errors
+    def test_parse_with_no_flag
+        res = parse_arguments(['Here', '--no-baz'])
+        assert_equal('Here', res.foo)
+        assert_nil(res.bar)
+        assert_equal(false, res.baz)
+        assert_equal([], res.files)
+    end
+
+    def test_parse_with_keyword
+        res = parse_arguments('Here --bar bold')
+        assert_equal('Here', res.foo)
+        assert_equal('bold', res.bar)
+        assert_nil(res.baz)
+        assert_equal([], res.files)
+    end
+
+    def test_parse_with_rest
+        res = parse_arguments('Here bar bold')
+        assert_equal('Here', res.foo)
+        assert_nil(res.bar)
+        assert_nil(res.baz)
+        assert_equal(['bar', 'bold'], res.files)
+    end
+
+    def test_parse_order
+        res = parse_arguments('-b gold Here bar --no-baz bold')
+        assert_equal('Here', res.foo)
+        assert_equal('gold', res.bar)
+        assert_equal(false, res.baz)
+        assert_equal(['bar', 'bold'], res.files)
+    end
+
+    def test_parse_with_repeated_arg
+        res = parse_arguments('Here -b gold --bar silver')
+        assert_equal('silver', res.bar)
     end
 
 end
-
-=begin
-d = ArgParser::Definition.new
-d << ArgParser::KeywordArgument.new('flawgic', 'Google flawgic', short_key: 'f')
-d << ArgParser::PositionalArgument.new('flawgic2', 'Google flawgic')
-d << ArgParser::FlagArgument.new('foo', 'Morr fubar', short_key: 'm')
-
-p = ArgParser::Parser.new(d)
-=end
-
-p = Test.new
-d = Test.args_def
-d.show_usage
-d.show_help
-
-puts d.positional_args.inspect
-
-puts '-f samsung bb moto nokia'
-puts p.parse(['me', '--', 'samsung', 'bb', 'moto', 'nokia']).inspect
-puts p.parse(['-f', 'samsung', 'bb', 'moto', 'nokia']).inspect
-puts p.errors.inspect
-puts p.parse 'This is a "long string" of text'
-puts '--flawgic samsung blackbeery'
-puts p.parse(['--flawgic', 'samsung', 'Blackberry'])
-puts p.errors.inspect
-puts '--flawgic --foo argh'
-puts p.parse(['--flawgic', '--foo', 'argh']).inspect
-puts p.errors.inspect
-puts '-fm'
-puts p.parse(['-mf', 'boo', 'hoo'])
-puts p.errors.inspect
-
-puts Test::COMMAND_LINE.parse
 
