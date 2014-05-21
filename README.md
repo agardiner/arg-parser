@@ -33,7 +33,7 @@ class MyClass
     positional_arg :my_positional_arg, 'This is a positional arg'
     keyword_arg :my_keyword_arg, 'This is a keyword arg'
     flag_arg :flag, 'This is a flag argument'
-    rest_arg :files, 'This is where we specify tha
+    rest_arg :files, 'This is where we specify that remaining args will be collected in an array'
 
 
     def run
@@ -68,9 +68,13 @@ list of features:
 * Validation: Arguments can define validation requirements that must be satisfied. This can take several
   forms:
      - List of values: Pass an array containing the allowed values the argument can take.
+       `validation: %w{one two three}`
      - Regular expression: Pass a regular expression that the argument value must satisfy.
+       `validation: /.*\.rb$/`
      - Proc: Pass a proc that will be called to validate the supplied argument value. If the proc returns
        a non-falsey value, the argument is accepted, otherwise it is rejected.
+       `validation: lambda{ |val, arg, hsh| val.upcase == 'TRUE' }`
 * On-parse handler: A proc can be passed that will be called when the argument value is encountered
   during parsing. The return value of the proc will be used as the argument result.
+  `on_parse: lambda{ |val, arg, hsh| val.split(',') }`
 
