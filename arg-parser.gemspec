@@ -1,4 +1,4 @@
-Gem::Specification.new do |s|
+GEMSPEC = Gem::Specification.new do |s|
     s.name = "arg-parser"
     s.version = "0.1"
     s.authors = ["Adam Gardiner"]
