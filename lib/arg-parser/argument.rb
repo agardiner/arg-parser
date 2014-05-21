@@ -1,6 +1,12 @@
 # Namespace for classes defined by ArgParser, the command-line argument parser.
 module ArgParser
 
+    # Hash containing registered handlers for :on_parse options
+    OnParseHandlers = {
+        :split_to_array => lambda{ |val, arg, hsh| val.split(',') }
+    }
+
+
     # Abstract base class of all command-line argument types.
     #
     # @abstract
@@ -62,6 +68,17 @@ module ArgParser
             @description = desc
             @default = opts[:default]
             @on_parse = block || opts[:on_parse]
+            if @on_parse.is_a?(Symbol)
+                op = opts[:on_parse]
+                @on_parse = case
+                when OnParseHandlers.has_key?(op)
+                    OnParseHandlers[op]
+                when "".respond_to?(op)
+                    lambda{ |val, arg, hsh| val.send(op) }
+                else
+                    raise ArgumentError, "No on_parse handler registered for #{op.inspect}"
+                end
+            end
             @usage_break = opts[:usage_break]
             if sk = opts[:short_key]
                 if sk =~ /^-?([a-z0-9])$/i
