@@ -10,5 +10,7 @@ GEMSPEC = Gem::Specification.new do |s|
         may be optional or mandatory.
     EOQ
     s.email = "adam.b.gardiner@gmail.com"
+    s.homepage = 'https://github.com/agardiner/arg-parser'
     s.require_paths = ['lib']
+    s.files = ['README.md', 'LICENSE'] + Dir['lib/**/*.rb']
 end
