@@ -27,10 +27,10 @@ module ArgParser
         attr_accessor :default
         # An optional on_parse callback handler. The supplied block/Proc will be
         # called after this argument has been parsed, with three arguments:
-        #   @param [Argument] The Argument sub-class object that represents the
-        #     argument that was parsed.
         #   @param [String] The value from the command-line that was entered for
         #     this argument.
+        #   @param [Argument] The Argument sub-class object that represents the
+        #     argument that was parsed.
         #   @param [Hash] The results Hash containing the argument keys and their
         #     values parsed so far.
         # @return [Proc] the user supplied block to be called when the argument
@@ -84,6 +84,7 @@ module ArgParser
         # @return [Boolean] Flag indicating that the value for this argument is
         #   a sensitive value (e.g. a password) that should not be displayed.
         attr_accessor :sensitive
+        alias_method :sensitive?, :sensitive
         # @return [Array, Regexp, Proc] An optional validation that will be
         #   applied to the argument value for this argument, to determine if it
         #   is valid. The validation can take the following forms:
@@ -92,10 +93,10 @@ module ArgParser
         #       Array.
         #     @param [Regexp] If a Regexp object is supplied, the argument value
         #       will be tested against the Regexp to verify it is valid.
-        #     @param [Proc] The most flexible option; this ValueArgument sub-class
-        #       object, the supplied value and the parse results (thus far) will
-        #       be passed to the Proc for validation. The Proc must return a non-
-        #       falsy value for the argument to be accepted.
+        #     @param [Proc] The most flexible option; the supplied value, this
+        #       ValueArgument sub-class object, and the parse results (thus far)
+        #       will be passed to the Proc for validation. The Proc must return a
+        #       non-falsey value for the argument to be accepted.
         attr_accessor :validation
         # @return [String] A label that will be used in the usage string printed
         #   for this ValueArgument. If not specified, defaults to the upper-case
@@ -104,8 +105,6 @@ module ArgParser
         #     Usage:
         #       my-prog.rb FOO-BAR
         attr_accessor :usage_value
-
-        alias_method :sensitive?, :sensitive
 
 
         private
@@ -123,6 +122,11 @@ module ArgParser
     # An argument that is set by position on the command-line. PositionalArguments
     # do not require a --key to be specified before the argument value; they are
     # typically used when there are a small number of mandatory arguments.
+    #
+    # Positional arguments still have a key that is used to identify the parsed
+    # argument value in the results Struct. As such, it is not an error for a
+    # positional argument to be specified with its key - its just not mandatory
+    # for the key to be provided.
     class PositionalArgument < ValueArgument
 
         # Creates a new positional argument, which is an argument value that may

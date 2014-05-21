@@ -202,7 +202,7 @@ module ArgParser
                         add_value_error(arg, val) unless arg.validation.include?(v)
                     end
                 when Proc
-                    arg.validation.call(arg, val, hsh)
+                    arg.validation.call(val, arg, hsh)
                 else
                     raise "Unknown validation type: #{arg.validation.class.name}"
                 end
@@ -211,7 +211,7 @@ module ArgParser
             # TODO: Argument value coercion
 
             # Call any registered on_parse handler
-            val = arg.on_parse.call(arg, val, hsh) if val && arg.on_parse
+            val = arg.on_parse.call(val, arg, hsh) if val && arg.on_parse
 
             # Return result
             val
