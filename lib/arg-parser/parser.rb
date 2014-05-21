@@ -48,11 +48,6 @@ module ArgParser
             @show_usage = nil
             @show_help = nil
             @errors = []
-            if tokens.is_a?(String)
-                require 'csv'
-                tokens = CSV.parse(tokens, col_sep: ' ').first
-            end
-            tokens = [] unless tokens
             pos_vals, kw_vals, rest_vals = classify_tokens(tokens)
             args = process_args(pos_vals, kw_vals, rest_vals) unless @show_help
             (@show_usage || @show_help) ? false : args
@@ -75,6 +70,11 @@ module ArgParser
         # a keyword arg cannot be distinguished from a flag arg followed by a
         # positional arg without the context of what arguments are expected.
         def classify_tokens(tokens)
+            if tokens.is_a?(String)
+                require 'csv'
+                tokens = CSV.parse(tokens, col_sep: ' ').first
+            end
+            tokens = [] unless tokens
             pos_vals = []
             kw_vals = {}
             rest_vals = []
@@ -130,8 +130,7 @@ module ArgParser
             pos_args = @definition.positional_args
             pos_args.each_with_index do |arg, i|
                 break if i >= pos_vals.length
-                val = process_arg_val(arg, pos_vals[i], result)
-                result[arg.key] = val
+                result[arg.key] = process_arg_val(arg, pos_vals[i], result)
             end
             if pos_vals.size > pos_args.size
                 if @definition.rest_args?
@@ -145,14 +144,12 @@ module ArgParser
 
             # Process key-word based arguments
             kw_vals.each do |arg, val|
-                val = process_arg_val(arg, val, result)
-                result[arg.key] = val
+                result[arg.key] = process_arg_val(arg, val, result)
             end
 
             # Process rest values
             if arg = @definition.rest_args
-                val = process_arg_val(arg, rest_vals, result)
-                result[arg.key] = val
+                result[arg.key] = process_arg_val(arg, rest_vals, result)
             elsif rest_vals.size > 0
                 self.errors << "#{rest_vals.size} rest #{rest_vals.size == 1 ? 'value' : 'values'} #{
                     rest_vals.size == 1 ? 'was' : 'were'} supplied, but no rest argument is defined"

@@ -102,42 +102,48 @@ module ArgParser
             base.extend(ClassMethods)
         end
 
+        # @return [Definition] The arguments Definition object defined on this
+        #   class.
+        def args_def
+            self.class.args_def
+        end
+
         # Defines a +parse_arguments+ instance method to be added to classes that
         # include this module. Uses the +args_def+ argument definition stored on
         # on the class to define the arguments to parse.
         def parse_arguments(args = ARGV)
-          self.class.args_def.parse(args)
+          args_def.parse(args)
         end
 
 
         # Defines a +parse_errors+ instance method to be added to classes that
         # include this module.
         def parse_errors
-            self.class.args_def.errors
+            args_def.errors
         end
 
 
         # Whether usage information should be displayed.
         def show_usage?
-            self.class.args_def.show_usage?
+            args_def.show_usage?
         end
 
 
         # Whether help should be displayed.
         def show_help?
-            self.class.args_def.show_usage?
+            args_def.show_usage?
         end
 
 
         # Outputs brief usgae details.
         def show_usage(*args)
-            self.class.args_def.show_usage(*args)
+            args_def.show_usage(*args)
         end
 
 
         # Outputs detailed help about available arguments.
         def show_help(*args)
-            self.class.args_def.show_help(*args)
+            args_def.show_help(*args)
         end
 
     end

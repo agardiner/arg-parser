@@ -28,6 +28,7 @@ module ArgParser
         #   argument. Mandatory arguments that do not get specified result in a
         #   ParseException.
         attr_accessor :required
+        alias_method :required?, :required
         # @return [String] the default value for the argument, returned in the
         #   command-line parse results if no other value is specified.
         attr_accessor :default
@@ -47,7 +48,6 @@ module ArgParser
         #   the group.
         attr_accessor :usage_break
 
-        alias_method :required?, :required
 
         # Converts an argument key specification into a valid key, by stripping
         # leading dashes, converting remaining dashes to underscores, and lower-
@@ -157,20 +157,20 @@ module ArgParser
         #   /? flags on the command-line.
         # @param [Hash] opts Contains any options that are desired for this
         #   argument.
-        # @yield [arg, val, hsh] If supplied, the block passed will be invoked
+        # @yield [val, arg, hsh] If supplied, the block passed will be invoked
         #   after this argument value has been parsed from the command-line.
         #   Blocks are usually used when the value to be returned needs to be
         #   converted from a String to some other type.
-        # @yieldparam arg [PositionalArgument] this argument definition
         # @yieldparam val [String] the String value read from the command-line
         #   for this argument
+        # @yieldparam arg [PositionalArgument] this argument definition
         # @yieldparam hsh [Hash] a Hash containing the argument values parsed
         #   so far.
         # @yieldreturn [Object] the return value from the block will be used as
         #   the argument value  parsed from the command-line for this argument.
         def initialize(key, desc, opts = {}, &block)
             super
-            @required = opts.fetch(:required, true)
+            @required = opts.fetch(:required, !opts.has_key?(:default))
         end
 
         # @return [String] the word that will appear in the help display for
@@ -197,7 +197,6 @@ module ArgParser
         # value.
         # @return [Boolean] true if the keyword can be specified without a value.
         attr_accessor :value_optional
-
         alias_method :value_optional?, :value_optional
 
 
