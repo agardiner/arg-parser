@@ -1,9 +1,5 @@
 module ArgParser
 
-    # Exception class for command-line parse errors
-    class ParseException < RuntimeError; end
-
-
     # Parser for parsing a command-line
     class Parser
 
@@ -48,8 +44,13 @@ module ArgParser
             @show_usage = nil
             @show_help = nil
             @errors = []
-            pos_vals, kw_vals, rest_vals = classify_tokens(tokens)
-            args = process_args(pos_vals, kw_vals, rest_vals) unless @show_help
+            begin
+                pos_vals, kw_vals, rest_vals = classify_tokens(tokens)
+                args = process_args(pos_vals, kw_vals, rest_vals) unless @show_help
+            rescue NoSuchArgumentError => ex
+                self.errors << ex.message
+                @show_usage = true
+            end
             (@show_usage || @show_help) ? false : args
         end
 
@@ -95,7 +96,7 @@ module ArgParser
                     end
                 when /^(?:--|\/)(no-)?(.+)/i
                     kw_vals[arg] = nil if arg
-                    arg = @definition[$2] || @definition["#{$1}#{$2}"]
+                    arg = @definition[$2]
                     if FlagArgument === arg || (KeywordArgument === arg && $1)
                         kw_vals[arg] = $1 ? false : true
                         arg = nil
@@ -199,7 +200,12 @@ module ArgParser
                         add_value_error(arg, val) unless arg.validation.include?(v)
                     end
                 when Proc
-                    arg.validation.call(val, arg, hsh)
+                    begin
+                        arg.validation.call(val, arg, hsh)
+                    rescue StandardError => ex
+                        self.errors << "An error occurred in the validation handler for argument '#{arg}': #{ex}"
+                        return
+                    end
                 else
                     raise "Unknown validation type: #{arg.validation.class.name}"
                 end
@@ -208,7 +214,12 @@ module ArgParser
             # TODO: Argument value coercion
 
             # Call any registered on_parse handler
-            val = arg.on_parse.call(val, arg, hsh) if val && arg.on_parse
+            begin
+                val = arg.on_parse.call(val, arg, hsh) if val && arg.on_parse
+            rescue StandardError => ex
+                self.errors << "An error occurred in the on_parse handler for argument '#{arg}': #{ex}"
+                return
+            end
 
             # Return result
             val

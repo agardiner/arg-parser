@@ -1,5 +1,10 @@
 module ArgParser
 
+    # Exeption thrown when an attempt is made to access an argument that is not
+    # defined.
+    class NoSuchArgumentError < RuntimeError; end
+
+
     # Represents the collection of possible command-line arguments for a script.
     class Definition
 
@@ -35,7 +40,7 @@ module ArgParser
         #   specified key.
         def [](key)
             arg = has_key?(key)
-            arg or raise ArgumentError, "No argument defined for key '#{Argument.to_key(key)}'"
+            arg or raise NoSuchArgumentError, "No argument defined for key '#{Argument.to_key(key)}'"
         end
 
 
