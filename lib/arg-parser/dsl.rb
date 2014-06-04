@@ -131,7 +131,7 @@ module ArgParser
 
         # Whether help should be displayed.
         def show_help?
-            args_def.show_usage?
+            args_def.show_help?
         end
 
 
