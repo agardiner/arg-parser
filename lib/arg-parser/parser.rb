@@ -149,8 +149,8 @@ module ArgParser
             end
 
             # Process rest values
-            if arg = @definition.rest_args
-                result[arg.key] = process_arg_val(arg, rest_vals, result)
+            if rest_arg = @definition.rest_args
+                result[rest_arg.key] = process_arg_val(rest_arg, rest_vals, result)
             elsif rest_vals.size > 0
                 self.errors << "#{rest_vals.size} rest #{rest_vals.size == 1 ? 'value' : 'values'} #{
                     rest_vals.size == 1 ? 'was' : 'were'} supplied, but no rest argument is defined"
@@ -190,7 +190,7 @@ module ArgParser
 
             # Argument value validation
             if ValueArgument === arg && arg.validation && val
-                valid = case arg.validation
+                case arg.validation
                 when Regexp
                     [val].flatten.each do |v|
                         add_value_error(arg, val) unless v =~ arg.validation

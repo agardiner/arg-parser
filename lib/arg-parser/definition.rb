@@ -31,7 +31,7 @@ module ArgParser
         #   if it does not.
         def has_key?(key)
             k = Argument.to_key(key)
-            arg = @arguments[k] || @short_keys[k]
+            @arguments[k] || @short_keys[k]
         end
 
 
