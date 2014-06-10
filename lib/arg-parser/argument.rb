@@ -57,7 +57,8 @@ module ArgParser
         # @return [Symbol] the key by which an argument can be retrieved from
         #   the arguments definition, and the parse results.
         def self.to_key(label)
-            label.to_s.gsub(/^-+/, '').gsub('-', '_').downcase.intern
+            k = label.to_s.gsub(/^-+/, '').gsub('-', '_')
+            k.length > 1 ? k.downcase.intern : k.intern
         end
 
 
