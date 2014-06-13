@@ -46,6 +46,12 @@ module ArgParser
                 @args_def && @args_def.args.size > 0
             end
 
+            # Registers the supplied +block+ as an on_parse handler that can be
+            # attached to an argument using +key+.
+            def register_parse_handler(key, &block)
+                ArgParser::OnParseHandlers[key] = block
+            end
+
             # Sets the title that will appear in the Usage output generated from
             # the Definition.
             def title(val)
@@ -61,25 +67,39 @@ module ArgParser
             # Define a new positional argument.
             # @see PositionalArgument#initialize
             def positional_arg(key, desc, opts = {}, &block)
+                opts.merge!(@arg_opts){ |k, e, n| e || n } if @arg_opts
+                @arg_opts = nil
                 args_def.positional_arg(key, desc, opts, &block)
             end
 
             # Define a new positional argument.
             # @see KeywordArgument#initialize
             def keyword_arg(key, desc, opts = {}, &block)
+                opts.merge!(@arg_opts){ |k, e, n| e || n } if @arg_opts
+                @arg_opts = nil
                 args_def.keyword_arg(key, desc, opts, &block)
             end
 
             # Define a new flag argument.
             # @see FlagArgument#initialize
             def flag_arg(key, desc, opts = {}, &block)
+                opts.merge!(@arg_opts){ |k, e, n| e || n } if @arg_opts
+                @arg_opts = nil
                 args_def.flag_arg(key, desc, opts, &block)
             end
 
             # Define a rest argument.
             # @see RestArgument#initialize
             def rest_arg(key, desc, opts = {}, &block)
+                opts.merge!(@arg_opts){ |k, e, n| e || n } if @arg_opts
+                @arg_opts = nil
                 args_def.rest_arg(key, desc, opts, &block)
+            end
+
+            # Set a label for a usage break to be applied on the next argument
+            # that is defined.
+            def usage_break(label)
+                @arg_opts = {usage_break: label}
             end
 
             # Make exactly one of the specified arguments mandatory.
