@@ -1,6 +1,6 @@
 GEMSPEC = Gem::Specification.new do |s|
     s.name = "arg-parser"
-    s.version = "0.1"
+    s.version = "0.2"
     s.authors = ["Adam Gardiner"]
     s.date = "2013-05-21"
     s.summary = "ArgParser is a simple, yet powerful, command-line argument (option) parser"
