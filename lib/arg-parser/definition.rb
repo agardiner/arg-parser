@@ -175,7 +175,7 @@ module ArgParser
             errors = []
             @require_set.each do |req, sets|
                 sets.each do |set|
-                    count = set.count{ |arg| args.has_key?(arg.key) }
+                    count = set.count{ |arg| args.has_key?(arg.key) && args[arg.key] }
                     case req
                     when :one
                         if count == 0
