@@ -132,7 +132,7 @@ module ArgParser
         # include this module. Uses the +args_def+ argument definition stored on
         # on the class to define the arguments to parse.
         def parse_arguments(args = ARGV)
-          args_def.parse(args)
+            args_def.parse(args)
         end
 
 
