@@ -57,7 +57,7 @@ module ArgParser
                 if arg.short_key && @short_keys[arg.short_key]
                     raise ArgumentError, "An argument with short key '#{arg.short_key}' has already been defined"
                 end
-                if rest_args
+                if arg.is_a?(RestArgument) && rest_args
                     raise ArgumentError, "Only one rest argument can be defined"
                 end
                 @arguments[arg.key] = arg
