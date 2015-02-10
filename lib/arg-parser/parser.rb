@@ -165,6 +165,8 @@ module ArgParser
             self.errors.concat(@definition.validate_requirements(result))
             if self.errors.size > 0
                 @show_usage = true
+            elsif result.empty?
+                BasicObject.new
             else
                 props = result.keys
                 @definition.args.each{ |arg| props << arg.key unless result.has_key?(arg.key) }
