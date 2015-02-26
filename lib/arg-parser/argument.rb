@@ -195,8 +195,18 @@ module ArgParser
     class KeywordArgument < ValueArgument
 
         # Whether the keyword argument must be specified with a non-missing
-        # value.
-        # @return [Boolean] true if the keyword can be specified without a value.
+        # value. The default is false, meaning the keyword argument must be
+        # specified together with a value. When this property is set to a
+        # non-falsy value (i.e. not nil or false), the keyword argument can
+        # be specified either with or without a value (or not at all):
+        # - If specified with a value, the value will be returned.
+        # - If specified without a value, the value of this property will be
+        #   returned.
+        # - If not specified at all, the default value will be returned.
+        #
+        # @return [Object] If truthy, the argument does not require a value.
+        #   If the argument is specified but no value is provided, the value
+        #   of this property will be the argument value.
         attr_accessor :value_optional
         alias_method :value_optional?, :value_optional
 
@@ -205,6 +215,7 @@ module ArgParser
         # on a command-line using either a long form key (i.e. --key), or
         # optionally, a short-form key (i.e. -k) should one be defined for this
         # argument.
+        #
         # @param key [Symbol] the key that will be used to identify this argument
         #   value in the parse results.
         # @param desc [String] the description of this argument, displayed in the

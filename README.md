@@ -31,7 +31,12 @@ class MyClass
     EOT
 
     positional_arg :my_positional_arg, 'This is a positional arg'
-    keyword_arg :my_keyword_arg, 'This is a keyword arg'
+    keyword_arg :my_keyword_arg, 'This is a keyword arg; if not specified, returns value1',
+        default: 'value1'
+    # An optional value keyword argument. If not specified, returns false. If specified
+    # without a value, returns 'maybe'. If specified with a value, returns the value.
+    keyword_arg :val_opt, 'This is a keyword arg with optional value',
+        value_optional: 'maybe'
     flag_arg :flag, 'This is a flag argument'
     rest_arg :files, 'This is where we specify that remaining args will be collected in an array'
 
@@ -61,6 +66,8 @@ list of features:
 * Mandatory vs Optional: All arguments your program accepts can be defined as optional or mandatory.
   By default, positional arguments are considered mandatory, and all others default to optional. To change
   the default, simply specify `required: true` or `required: false` when defining the argument.
+* Keyword arguments can also accept an optional value, using the `value_optional` option. If a keyword
+  argument is supplied without a value, it returns the value of the `value_optional` option.
 * Short-keys and long-keys: Arguments are defined with a long_key name which will be used to access the
   parsed value in the results. However, arguments can also define a single letter or digit short-key form
   which can be used as an alternate means for indicating a value. To define a short key, simply pass

@@ -11,6 +11,9 @@ class TestParser < Test::Unit::TestCase
         purpose 'To test the fubar-ness of stuff'
         positional_arg :foo, 'Foo arg'
         keyword_arg :bar, 'Bar arg', short_key: 'b'
+        keyword_arg :opt, 'Optional val', value_optional: 'Used'
+        keyword_arg :opt_def, 'Optional val with default', value_optional: true,
+            default: false
         flag_arg :baz, 'Baz arg', short_key: 'z'
         rest_arg :files, 'List of files to process with fubar', required: false
     end
@@ -83,6 +86,21 @@ class TestParser < Test::Unit::TestCase
     def test_no_definition
         a0 = Arg0.new
         res = a0.parse_arguments([])
+    end
+
+
+    def test_on_use
+        res = @a1.parse_arguments('One tow')
+        assert(!res.opt)
+        res = @a1.parse_arguments('One two --opt bag')
+        assert_equal('bag', res.opt)
+        assert_equal(false, res.opt_def)
+        res = @a1.parse_arguments('One two --opt --bar fee')
+        assert_equal('Used', res.opt)
+        res = @a1.parse_arguments('One two --opt-def --bar fee')
+        assert_equal(true, res.opt_def)
+        res = @a1.parse_arguments('One two --opt-def five --bar fee')
+        assert_equal('five', res.opt_def)
     end
 
 end

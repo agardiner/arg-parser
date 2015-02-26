@@ -185,9 +185,13 @@ module ArgParser
                 self.errors << "No value was specified for required argument '#{arg}'"
                 return
             end
-            if !is_default && val.nil? && KeywordArgument === arg && !arg.value_optional?
-                self.errors << "No value was specified for keyword argument '#{arg}'"
-                return
+            if !is_default && val.nil? && KeywordArgument === arg
+                if arg.value_optional?
+                    val = arg.value_optional
+                else
+                    self.errors << "No value was specified for keyword argument '#{arg}'"
+                    return
+                end
             end
 
             # Argument value validation
