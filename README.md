@@ -84,4 +84,5 @@ list of features:
 * On-parse handler: A proc can be passed that will be called when the argument value is encountered
   during parsing. The return value of the proc will be used as the argument result.
   `on_parse: lambda{ |val, arg, hsh| val.split(',') }`
-
+* Pre-defined arguments: Arguments can be registered under a key, and then re-used across multiple
+  definitions via the #predefined_arg DSL method. See Argument.register and DSL.predefined_arg.

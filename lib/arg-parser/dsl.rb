@@ -96,6 +96,19 @@ module ArgParser
                 args_def.rest_arg(key, desc, opts, &block)
             end
 
+            # Use a pre-defined argument.
+            # @see Definition#predefined_arg
+            def predefined_arg(lookup_key, desc = nil, opts = {})
+                if desc.is_a?(Hash)
+                    opts = desc
+                    desc = nil
+                end
+                opts.merge!(@arg_opts){ |k, e, n| e || n } if @arg_opts
+                opts[:description] = desc if desc
+                @arg_opts = nil
+                args_def.predefined_arg(lookup_key, opts)
+            end
+
             # Set a label for a usage break to be applied on the next argument
             # that is defined.
             def usage_break(label)

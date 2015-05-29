@@ -101,6 +101,36 @@ module ArgParser
         end
 
 
+        # Lookup a pre-defined argument (created earlier via Argument#register),
+        # and add it to this arguments definition.
+        #
+        # @see Argument#register
+        #
+        # @param lookup_key [String, Symbol] The key under which the pre-defined
+        #   argument was registered.
+        # @param desc [String] An optional override for the argument description
+        #   for this use of the pre-defined argument.
+        # @param opts [Hash] An options hash for those select properties that
+        #   can be overridden on a pre-defined argument.
+        # @option opts [String] :description The argument description for this
+        #   use of the pre-defined argument.
+        # @option opts [String] :usage_break The usage break for this use of
+        #   the pre-defined argument.
+        # @option opts [Boolean] :required Whether this argument is a required
+        #   (i.e. mandatory) argument.
+        # @option opts [String] :default The default value for the argument,
+        #   returned in the command-line parse results if no other value is
+        #   specified.
+        def predefined_arg(lookup_key, opts = {})
+            arg = Argument.lookup(lookup_key)
+            arg.description = opts[:description] if opts[:description]
+            arg.useage_break = opts[:usage_break] if opts.has_key?(:usage_break)
+            arg.required = opts[:required] if opts.has_key?(:required)
+            arg.default = opts[:default] if opts.has_key?(:default)
+            self << arg
+        end
+
+
         # Individual arguments are optional, but exactly one of +keys+ arguments
         # is required.
         def require_one_of(*keys)

@@ -5,6 +5,8 @@ module ArgParser
     OnParseHandlers = {
         :split_to_array => lambda{ |val, arg, hsh| val.split(',') }
     }
+    # Hash containing registered arguments available via #predefined_arg
+    PredefinedArguments = { }
 
 
     # Abstract base class of all command-line argument types.
@@ -59,6 +61,47 @@ module ArgParser
         def self.to_key(label)
             k = label.to_s.gsub(/^-+/, '').gsub('-', '_')
             k.length > 1 ? k.downcase.intern : k.intern
+        end
+
+
+        # Register a common argument for use in multiple argument definitions. The
+        # registered argument is a completely defined argument that can be added to
+        # any argument definition via Definition#predefined_arg.
+        #
+        # @see Definition#predefined_arg
+        #
+        # @param lookup_key [String, Symbol] The key with which to register the
+        #   argument for subsequent lookup. This can be different from the key
+        #   which will represent the argument when parsed etc; this makes it
+        #   possible to register several alternate versions of the same argument
+        #   for use in different circumstances.
+        # @param arg [Argument] An Argument sub-class that represents the arg
+        #   that is to be registered for later use. #TODO: Document how arg is
+        #   created.
+        def self.register(lookup_key, arg)
+            key = self.to_key(lookup_key)
+            if PredefinedArguments.has_key?(key)
+                raise ArgumentError, "An argument has already been registered under key '#{lookup_key}'"
+            end
+            PredefinedArguments[key] = arg
+        end
+
+
+        # Return a copy of a pre-defined argument for use in an argument
+        # definition.
+        #
+        # @param lookup_key [String, Symbol] The key with which to register the
+        #   argument for subsequent lookup. This can be different from the key
+        #   which will represent the argument when parsed etc; this makes it
+        #   possible to register several alternate versions of the same argument
+        #   for use in different circumstances.
+        # @return [Argument] A copy of the registered argument.
+        def self.lookup(lookup_key)
+            key = self.to_key(lookup_key)
+            unless arg = PredefinedArguments[key]
+                raise ArgumentError, "No pre-defined argument has been registered under key '#{lokkup_key}'"
+            end
+            arg.clone
         end
 
 
@@ -308,6 +351,9 @@ module ArgParser
         #   /? flags on the command-line.
         # @param [Hash] opts Contains any options that are desired for this
         #   argument.
+        # @option opts [Fixnum] :min_values The minimum number of rest values
+        #   that must be supplied. Defaults to 1 if the RestArgument is
+        #   required, or 0 if it is not.
         # @param [Block] block If supplied, the block passed will be invoked
         #   after this argument value has been parsed from the command-line.
         #   The block will be called with three arguments: this argument
