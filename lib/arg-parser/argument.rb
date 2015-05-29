@@ -99,7 +99,7 @@ module ArgParser
         def self.lookup(lookup_key)
             key = self.to_key(lookup_key)
             unless arg = PredefinedArguments[key]
-                raise ArgumentError, "No pre-defined argument has been registered under key '#{lokkup_key}'"
+                raise ArgumentError, "No pre-defined argument has been registered under key '#{lookup_key}'"
             end
             arg.clone
         end
