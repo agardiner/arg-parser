@@ -3,6 +3,11 @@ module ArgParser
     # Parser for parsing a command-line
     class Parser
 
+        # Create an empty structure for cases where we parse an empty arguments
+        # definition (and therefore need to return an empty Struct)
+        EmptyArgs = Struct.new(nil)
+
+
         # @return [Definition] The supported Arguments to be used when parsing
         #   the command-line.
         attr_reader :definition
@@ -166,7 +171,7 @@ module ArgParser
             if self.errors.size > 0
                 @show_usage = true
             elsif result.empty?
-                BasicObject.new
+                EmptyArgs.new
             else
                 props = result.keys
                 @definition.args.each{ |arg| props << arg.key unless result.has_key?(arg.key) }
