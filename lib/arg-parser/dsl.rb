@@ -133,6 +133,7 @@ module ArgParser
         # the DSL ClassMethods module.
         def self.included(base)
             base.extend(ClassMethods)
+            base.title base.class.name
         end
 
         # @return [Definition] The arguments Definition object defined on this
