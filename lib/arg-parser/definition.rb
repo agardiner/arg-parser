@@ -55,7 +55,8 @@ module ArgParser
                     raise ArgumentError, "An argument with key '#{arg.key}' has already been defined"
                 end
                 if arg.short_key && @short_keys[arg.short_key]
-                    raise ArgumentError, "An argument with short key '#{arg.short_key}' has already been defined"
+                    raise ArgumentError, "The short key '#{arg.short_key}' has already been registered by the '#{
+                        @short_keys[arg.short_key]}' argument"
                 end
                 if arg.is_a?(RestArgument) && rest_args
                     raise ArgumentError, "Only one rest argument can be defined"
@@ -221,6 +222,18 @@ module ArgParser
                 end
             end
             errors
+        end
+
+
+        # @return [Array] all argument keys that have been defined.
+        def keys
+            @arguments.keys
+        end
+
+
+        # @return [Array] all argument short keys that have been defined.
+        def short_keys
+            @short_keys.keys
         end
 
 
