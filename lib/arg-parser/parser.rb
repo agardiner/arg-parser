@@ -90,7 +90,7 @@ module ArgParser
                 case token
                 when '/?', '-?', '--help'
                     @show_help = true
-                when /^-([a-z0-9]+)/i
+                when /^[-\/]([a-z0-9]+)$/i
                     $1.to_s.each_char do |sk|
                         kw_vals[arg] = nil if arg
                         arg = @definition[sk]
@@ -99,7 +99,7 @@ module ArgParser
                             arg = nil
                         end
                     end
-                when /^(?:--|\/)(no-)?(.+)/i
+                when /^--(no-)?(.+)/i
                     kw_vals[arg] = nil if arg
                     arg = @definition[$2]
                     if FlagArgument === arg || (KeywordArgument === arg && $1)
