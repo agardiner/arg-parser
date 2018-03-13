@@ -14,6 +14,9 @@ module ArgParser
         # @return [String] A short description of the purpose of the script, for
         #   display when showing the usage help.
         attr_accessor :purpose
+        # @return [String] A copyright notice, displayed in the usage and help
+        #   outputs.
+        attr_accessor :copyright
 
 
         # Create a new Definition, which is a collection of valid Arguments to
@@ -348,6 +351,9 @@ module ArgParser
             if purpose
                 lines.concat(wrap_text(purpose, width))
                 lines << ''
+            end
+            if copyright
+                lines.concat(wrap_text("Copyright (c) #{copyright}", width))
                 lines << ''
             end
 

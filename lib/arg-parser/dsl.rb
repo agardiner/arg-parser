@@ -64,6 +64,12 @@ module ArgParser
                 args_def.purpose = desc
             end
 
+            # Sets the copyright notice to be displayed on the help screen or on
+            # startup.
+            def copyright(txt)
+                args_def.copyright = txt
+            end
+
             # Define a new positional argument.
             # @see PositionalArgument#initialize
             def positional_arg(key, desc, opts = {}, &block)
