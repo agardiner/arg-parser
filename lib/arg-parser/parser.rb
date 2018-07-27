@@ -86,6 +86,7 @@ module ArgParser
             rest_vals = []
 
             arg = nil
+            pos_args = @definition.positional_args
             tokens.each_with_index do |token, i|
                 case token
                 when '/?', '-?', '--help'
@@ -97,6 +98,8 @@ module ArgParser
                         if FlagArgument === arg
                             kw_vals[arg] = true
                             arg = nil
+                        elsif PoistionalArgument == arg
+                            pos_args.delete(arg)
                         end
                     end
                 when /^--(no-)?(.+)/i
@@ -105,18 +108,25 @@ module ArgParser
                     if FlagArgument === arg || (KeywordArgument === arg && $1)
                         kw_vals[arg] = $1 ? false : true
                         arg = nil
+                    elsif PositionalArgument === arg
+                        pos_args.delete(arg)
                     end
                 when '--'
                     # All subsequent values are rest args
                     kw_vals[arg] = nil if arg
+                    unless rest_vals.empty?
+                        self.errors << "Too many positional arguments supplied before -- token"
+                    end
                     rest_vals = tokens[(i + 1)..-1]
                     break
                 else
                     if arg
                         kw_vals[arg] = token
-                    else
+                    elsif pos_arg.size > 0
                         pos_vals << token
-                        arg = @definition.positional_args[i]
+                        arg = pos_args.shift
+                    else
+                        rest_vals << token
                     end
                     tokens[i] = '******' if arg && arg.sensitive?
                     arg = nil
