@@ -366,6 +366,7 @@ module ArgParser
         def initialize(key, desc, opts = {}, &block)
             super
             @min_values = opts.fetch(:min_values, opts.fetch(:required, true) ? 1 : 0)
+            @default = [@default] if @default.is_a?(String)
         end
 
         def required

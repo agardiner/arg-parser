@@ -164,11 +164,13 @@ module ArgParser
             end
 
             # Process rest values
-            if rest_arg = @definition.rest_args
-                result[rest_arg.key] = process_arg_val(rest_arg, rest_vals, result)
-            elsif rest_vals.size > 0
-                self.errors << "#{rest_vals.size} rest #{rest_vals.size == 1 ? 'value' : 'values'} #{
-                    rest_vals.size == 1 ? 'was' : 'were'} supplied, but no rest argument is defined"
+            if rest_vals.size > 0
+                if rest_arg = @definition.rest_args
+                    result[rest_arg.key] = process_arg_val(rest_arg, rest_vals, result)
+                else
+                    self.errors << "#{rest_vals.size} rest #{rest_vals.size == 1 ? 'value' : 'values'} #{
+                        rest_vals.size == 1 ? 'was' : 'were'} supplied, but no rest argument is defined"
+                end
             end
 
             # Default unspecified arguments
