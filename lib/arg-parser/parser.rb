@@ -122,7 +122,7 @@ module ArgParser
                 else
                     if arg
                         kw_vals[arg] = token
-                    elsif pos_arg.size > 0
+                    elsif pos_args.size > 0
                         pos_vals << token
                         arg = pos_args.shift
                     else
