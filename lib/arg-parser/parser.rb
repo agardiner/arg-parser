@@ -98,7 +98,7 @@ module ArgParser
                         if FlagArgument === arg
                             kw_vals[arg] = true
                             arg = nil
-                        elsif PoistionalArgument == arg
+                        elsif PositionalArgument == arg
                             pos_args.delete(arg)
                         end
                     end
