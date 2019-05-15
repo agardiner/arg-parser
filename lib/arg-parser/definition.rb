@@ -127,10 +127,12 @@ module ArgParser
         #   specified.
         def predefined_arg(lookup_key, opts = {})
             arg = Argument.lookup(lookup_key)
-            arg.description = opts[:description] if opts[:description]
-            arg.useage_break = opts[:usage_break] if opts.has_key?(:usage_break)
+            arg.short_key = opts[:short_key] if opts.has_key?(:short_key)
+            arg.description = opts[:description] if opts.has_key?(:description)
+            arg.usage_break = opts[:usage_break] if opts.has_key?(:usage_break)
             arg.required = opts[:required] if opts.has_key?(:required)
             arg.default = opts[:default] if opts.has_key?(:default)
+            arg.on_parse = opts[:on_parse] if opts.has_key?(:on_parse)
             self << arg
         end
 

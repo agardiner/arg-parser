@@ -21,7 +21,7 @@ module ArgParser
         attr_reader :key
         # @return [String] the description for this argument, which will be shown
         #   in the usage display.
-        attr_reader :description
+        attr_accessor :description
         # @return [Symbol] a single letter or digit that can be used as a short
         #   alternative to the full key to identify an argument value in a command-
         #   line.
@@ -105,6 +105,15 @@ module ArgParser
         end
 
 
+        def short_key=(sk)
+            if sk =~ /^-?([a-z0-9])$/i
+                @short_key = $1.intern
+            else
+                raise ArgumentError, "An argument short key must be a single digit or letter"
+            end
+        end
+
+
         private
 
         def initialize(key, desc, opts = {}, &block)
@@ -125,11 +134,7 @@ module ArgParser
             end
             @usage_break = opts[:usage_break]
             if sk = opts[:short_key]
-                if sk =~ /^-?([a-z0-9])$/i
-                    @short_key = $1.intern
-                else
-                    raise ArgumentError, "An argument short key must be a single digit or letter"
-                end
+                self.short_key=(sk)
             end
         end
 
