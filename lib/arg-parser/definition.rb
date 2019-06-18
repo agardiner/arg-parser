@@ -24,7 +24,7 @@ module ArgParser
         def initialize
             @arguments = {}
             @short_keys = {}
-            @require_set = Hash.new{ |h,k| h[k] = [] }
+            @require_set = []
             @title = $0.respond_to?(:titleize) ? $0.titleize : $0
             yield self if block_given?
         end
@@ -140,14 +140,14 @@ module ArgParser
         # Individual arguments are optional, but exactly one of +keys+ arguments
         # is required.
         def require_one_of(*keys)
-            @require_set[:one] << keys.map{ |k| self[k] }
+            @require_set << [:one, keys.map{ |k| self[k] }]
         end
 
 
         # Individual arguments are optional, but at least one of +keys+ arguments
         # is required.
         def require_any_of(*keys)
-            @require_set[:any] << keys.map{ |k| self[k] }
+            @require_set << [:any, keys.map{ |k| self[k] }]
         end
 
 
@@ -209,20 +209,18 @@ module ArgParser
         #   have not been satisfied.
         def validate_requirements(args)
             errors = []
-            @require_set.each do |req, sets|
-                sets.each do |set|
-                    count = set.count{ |arg| args.has_key?(arg.key) && args[arg.key] }
-                    case req
-                    when :one
-                        if count == 0
-                            errors << "No argument has been specified for one of: #{set.join(', ')}"
-                        elsif count > 1
-                            errors << "Only one argument can been specified from: #{set.join(', ')}"
-                        end
-                    when :any
-                        if count == 0
-                            errors << "At least one of the arguments must be specified from: #{set.join(', ')}"
-                        end
+            @require_set.each do |req, set|
+                count = set.count{ |arg| args.has_key?(arg.key) && args[arg.key] }
+                case req
+                when :one
+                    if count == 0
+                        errors << "No argument has been specified for one of: #{set.join(', ')}"
+                    elsif count > 1
+                        errors << "Only one argument can been specified from: #{set.join(', ')}"
+                    end
+                when :any
+                    if count == 0
+                        errors << "At least one of the arguments must be specified from: #{set.join(', ')}"
                     end
                 end
             end
