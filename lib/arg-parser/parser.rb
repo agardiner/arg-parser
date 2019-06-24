@@ -40,11 +40,27 @@ module ArgParser
         end
 
 
-        # Parse the specified Array[String] of +tokens+, or ARGV if +tokens+ is
-        # nil. Returns false if unable to parse successfully, or an OpenStruct
-        # with accessors for every defined argument. Arguments whose values are
-        # not specified will contain the agument default value, or nil if no
-        # default is specified.
+        # Parse the specified Array<String> of +tokens+, or ARGV if +tokens+ is
+        # nil. If the parse is successful, an OpenStruct object is returned with
+        # values for all defined arguments as members of the OpenStruct.
+        # If parsing is not succssful, it may be due to parse errors or because
+        # a help flag was encountered. The +show_usage+ or +show_help+ flags
+        # will be set (the former in the case of parse errors, and the latter if
+        # help was requested), as well as the +errors+ property if there were parse
+        # errors.
+        #
+        # @note After parse has been called, the argument Definition used by the
+        # parser may have been replaced if a command argument value was specified.
+        # This new definition can be used to show context-specific help or usage
+        # details.
+        #
+        # @param tokens [Array<String>] The tokens to be parsed using the
+        #   argument definition set for this parser. If not specified, defaults
+        #   to ARGV.
+        # @return [False|OpenStruct] false if unable to parse successfully, or
+        # an OpenStruct with accessors for every defined argument if the parse
+        # was successful. Arguments whose values are not specified will contain
+        # the agument default value, or nil if no default is specified.
         def parse(tokens = ARGV)
             @show_usage = nil
             @show_help = nil
@@ -73,8 +89,13 @@ module ArgParser
         # Evaluate the list of values in +tokens+, and classify them as either
         # keyword/value pairs, or positional arguments. Ideally this would be
         # done without any reference to the defined arguments, but unfortunately
-        # a keyword arg cannot be distinguished from a flag arg followed by a
-        # positional arg without the context of what arguments are expected.
+        # there are a couple of issues that require context to be able to handle
+        # properly:
+        # - a keyword arg cannot be distinguished from a flag arg followed by a
+        #   positional arg without the context of what arguments are expected.
+        # - command arguments will normally have their own set of additional
+        #   arguments that must be added once we know which command has been
+        #   entered.
         def classify_tokens(tokens)
             if tokens.is_a?(String)
                 require 'csv'
@@ -88,10 +109,16 @@ module ArgParser
             arg = nil
             pos_args = @definition.positional_args
             tokens.each_with_index do |token, i|
+                if token.downcase == 'help' && i == 0
+                    # Accept 'help' as the first token
+                    @show_help = true
+                    next
+                end
                 case token
                 when '/?', '-?', '--help'
                     @show_help = true
                 when /^[-\/]([a-z0-9]+)$/i
+                    # One or more short keys
                     $1.to_s.each_char do |sk|
                         kw_vals[arg] = nil if arg
                         arg = @definition[sk]
@@ -102,7 +129,8 @@ module ArgParser
                             pos_args.delete(arg)
                         end
                     end
-                when /^--(no-)?(.+)/i
+                when /^--(no[nt]?-)?(.+)/i
+                    # Long key
                     kw_vals[arg] = nil if arg
                     arg = @definition[$2]
                     if FlagArgument === arg || (KeywordArgument === arg && $1)
@@ -123,8 +151,16 @@ module ArgParser
                     if arg
                         kw_vals[arg] = token
                     elsif pos_args.size > 0
-                        pos_vals << token
                         arg = pos_args.shift
+                        pos_vals << token
+                        if CommandArgument === arg
+                            cmd_inst = arg[token]
+                            # Merge command's arg set with the current definition
+                            @definition = @definition.collapse(cmd_inst)
+                            # Insert command positional arguments
+                            pos_args.insert(0, *cmd_inst.argument_scope.positional_args)
+                            arg = nil   # Commands can't be sensitive
+                        end
                     else
                         rest_vals << token
                     end
@@ -169,7 +205,8 @@ module ArgParser
                     result[rest_arg.key] = process_arg_val(rest_arg, rest_vals, result)
                 else
                     self.errors << "#{rest_vals.size} rest #{rest_vals.size == 1 ? 'value' : 'values'} #{
-                        rest_vals.size == 1 ? 'was' : 'were'} supplied, but no rest argument is defined"
+                        rest_vals.size == 1 ? 'was' : 'were'} supplied (#{rest_vals.join(', ')
+                        }), but no rest argument is defined"
                 end
             end
 

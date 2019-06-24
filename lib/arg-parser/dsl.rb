@@ -41,6 +41,7 @@ module ArgParser
                 @args_def ||= ArgParser::Definition.new
             end
 
+
             # Returns true if any arguments have been defined
             def args_defined?
                 @args_def && @args_def.args.size > 0
@@ -68,6 +69,14 @@ module ArgParser
             # startup.
             def copyright(txt)
                 args_def.copyright = txt
+            end
+
+            # Define a new command argument.
+            # @see CommandArgument#initialize
+            def command_arg(key, desc, opts = {}, &block)
+                opts.merge!(@arg_opts){ |k, e, n| e || n } if @arg_opts
+                @arg_opts = nil
+                args_def.command_arg(key, desc, opts, &block)
             end
 
             # Define a new positional argument.
@@ -100,6 +109,26 @@ module ArgParser
                 opts.merge!(@arg_opts){ |k, e, n| e || n } if @arg_opts
                 @arg_opts = nil
                 args_def.rest_arg(key, desc, opts, &block)
+            end
+
+
+            # Define a set of pre-defined arguments for later use
+            def define_args(label = nil, &block)
+                pre_def_arg_scope = ArgumentScope.new(label || "Predefined args")
+                pre_def_arg_scope.instance_eval(&block)
+                pre_def_arg_scope
+            end
+
+            # Set the ArgumentScope to use for looking up pre-defined arguments
+            def with_predefined_args(scope, &blk)
+                if block_given?
+                    pre_defs = args_def.predefined_args
+                    args_def.predefined_args = scope
+                    yield
+                    args_def.predefined_args = pre_defs
+                else
+                    args_def.predefined_args = scope
+                end
             end
 
             # Use a pre-defined argument.

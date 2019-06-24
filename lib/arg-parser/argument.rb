@@ -5,7 +5,9 @@ module ArgParser
     OnParseHandlers = {
         :split_to_array => lambda{ |val, arg, hsh| val.split(',') }
     }
-    # Hash containing registered arguments available via #predefined_arg
+    # Hash containing globally registered predefined arguments available via
+    # #predefined_arg.
+    # TODO: Document preferred scoped usage
     PredefinedArguments = { }
 
 
@@ -14,8 +16,6 @@ module ArgParser
     # @abstract
     class Argument
 
-        # The key used to identify this argument value in the  parsed command-
-        # line results Struct.
         # @return [Symbol] the key/method by which this argument can be retrieved
         #   from the parse result Struct.
         attr_reader :key
@@ -50,19 +50,18 @@ module ArgParser
         #   the group.
         attr_accessor :usage_break
 
-
         # Converts an argument key specification into a valid key, by stripping
         # leading dashes, converting remaining dashes to underscores, and lower-
         # casing all text. This is required to ensure the key name will be a
         # valid accessor name on the parse results.
         #
+        # @param label [String|Symbol] the value supplied for an argument key
         # @return [Symbol] the key by which an argument can be retrieved from
-        #   the arguments definition, and the parse results.
+        #   the arguments definition and the parse results.
         def self.to_key(label)
             k = label.to_s.gsub(/^-+/, '').gsub('-', '_')
             k.length > 1 ? k.downcase.intern : k.intern
         end
-
 
         # Register a common argument for use in multiple argument definitions. The
         # registered argument is a completely defined argument that can be added to
@@ -86,7 +85,6 @@ module ArgParser
             PredefinedArguments[key] = arg
         end
 
-
         # Return a copy of a pre-defined argument for use in an argument
         # definition.
         #
@@ -104,7 +102,10 @@ module ArgParser
             arg.clone
         end
 
-
+        # Set the short key (a single letter or digit) that may be used as an
+        # alternative when specifyin gthis argument.
+        #
+        # @param sk [String] The short key specification
         def short_key=(sk)
             if sk =~ /^-?([a-z0-9])$/i
                 @short_key = $1.intern
@@ -116,6 +117,7 @@ module ArgParser
 
         private
 
+        # Private to prevent instantiation of this abstract class
         def initialize(key, desc, opts = {}, &block)
             @key = self.class.to_key(key)
             @description = desc
@@ -136,6 +138,87 @@ module ArgParser
             if sk = opts[:short_key]
                 self.short_key=(sk)
             end
+        end
+
+    end
+
+
+    # An argument type that defines a command. Only a single command placeholder
+    # can be defined per ArgumentSet, but each command placeholder can have one
+    # or more command arguments (i.e. allowed values). Depending on the command,
+    # different additional arguments may then be specified in the command's
+    # ArgumentSet.
+    class CommandArgument < Argument
+
+        # @return [Array<Symbol] List of valid commands that may be specified.
+        attr_accessor :commands
+
+
+        # Create an instance of a CommandArgument, a positional argument that
+        # indicates a particular command to be invoked.
+        #
+        # @param key [String|Symbol] The value under which the specified command
+        #   can be retrieved following parsing (e.g. :command)
+        # @param desc [String] A description for the command argument.
+        # @param opts [Hash] An options hash. See Argument#initialize for supported
+        #   option values.
+        def initialize(key, desc, opts = {})
+            super(key, desc, opts)
+            @commands = {}
+            @usage_value = opts.fetch(:usage_value, key.to_s.gsub('_', '-').upcase)
+        end
+
+        # Adds a specific command verb/value to this command argument
+        def <<(cmd_instance)
+            raise ArgumentError, "must be a CommandInstance object" unless cmd_instance.is_a?(CommandInstance)
+            @commands[cmd_instance.command_value] = cmd_instance
+        end
+
+        # Return the CommandInstance for a particular command value
+        #
+        # @param cmd_val [String|Symbol] A command token identifying the command
+        # @return [CommandInstance] The CommandInstance for the specified command
+        def [](cmd_val)
+            k = Argument.to_key(cmd_val)
+            @commands[k]
+        end
+
+        def to_s
+            @usage_value
+        end
+
+        def to_use
+            @usage_value
+        end
+
+    end
+
+
+    # Represents a specific command value for a CommandArgument, along with any
+    # additional arguments specific to this command.
+    class CommandInstance < Argument
+
+        # @return the constant value that identifies this CommandInstance
+        attr_reader :command_value
+        # Return the CommandArgument to which this CommandInstance relates
+        attr_reader :command_arg
+        # Return an ArgumentScope for any additional arguments this command takes 
+        attr_reader :argument_scope
+
+
+        def initialize(cmd_val, desc, cmd_arg, arg_scope, opts = {})
+            super(cmd_arg.key, desc, opts)
+            @command_value = cmd_val
+            @command_arg = cmd_arg
+            @argument_scope = arg_scope
+        end
+
+        def to_s
+            @command_value
+        end
+
+        def to_use
+            @command_value
         end
 
     end
@@ -325,6 +408,7 @@ module ArgParser
         #   String to some other type.
         def initialize(key, desc, opts = {}, &block)
             super
+            @usage_value = opts[:usage_value]
         end
 
         def required
@@ -337,7 +421,11 @@ module ArgParser
 
         def to_use
             sk = short_key ? "-#{short_key}, " : ''
-            "#{sk}#{self.to_s}"
+            if @usage_value
+                "#{sk}#{@usage_value[0..1] == '--' ? '' : '--'}#{@usage_value}"
+            else
+                "#{sk}#{self.to_s}"
+            end
         end
 
     end

@@ -5,28 +5,76 @@ module ArgParser
     class NoSuchArgumentError < RuntimeError; end
 
 
-    # Represents the collection of possible command-line arguments for a script.
-    class Definition
+    # Represents a scope within which an argument is defined/alid.
+    # Scopes may be nested, and argument requests will search the scope chain to
+    # find a matching argument.
+    class ArgumentScope
 
-        # @return [String] A title for the script, displayed at the top of the
-        #   usage and help outputs.
-        attr_accessor :title
-        # @return [String] A short description of the purpose of the script, for
-        #   display when showing the usage help.
-        attr_accessor :purpose
-        # @return [String] A copyright notice, displayed in the usage and help
-        #   outputs.
-        attr_accessor :copyright
+        attr_reader :name, :parent
+        attr_accessor :predefined_args
 
 
-        # Create a new Definition, which is a collection of valid Arguments to
-        # be used when parsing a command-line.
-        def initialize
+        def initialize(name, parent = nil)
+            @name = name
+            @parent = parent
+            @parent.add_child(self) if @parent
+            @children = []
             @arguments = {}
             @short_keys = {}
-            @require_set = []
-            @title = $0.respond_to?(:titleize) ? $0.titleize : $0
-            yield self if block_given?
+            @predefined_args = nil
+        end
+
+
+        # Adds a Scope as a child of this scope.
+        def add_child(arg_scope)
+            raise ArgumentError, "#{arg_scope} must be an ArgumentScope instance" unless arg_scope.is_a?(ArgumentScope)
+            raise ArgumentError, "#{arg_scope} parent not set to this ArgumentScope" if arg_scope.parent != self
+            @children << arg_scope
+        end
+
+
+        # Checks if a key has been used in this scope, any ancestor scopes, or
+        # any descendant scopes.
+        #
+        # @param key [String] The key under which an argument is to be registered
+        # @return [Argument|nil] The Argument that already uses the key, or nil
+        #   if the key is not used.
+        def key_used?(key)
+            self.walk_ancestors do |anc|
+                arg = anc.has_key?(key)
+                return arg if arg
+            end
+            self.walk_children do |child|
+                arg = child.has_key?(key)
+                return arg if arg
+            end
+            nil
+        end
+
+
+        # Yields each key/argument pair for this ArgumentScope
+        def walk_arguments(&blk)
+            @arguments.each(&blk)
+        end
+
+
+        # Yields each ancestor of this scope, optionally including this scope.
+        def walk_ancestors(inc_self = true, &blk)
+            scope = inc_self ? self : self.parent
+            while scope do
+                yield scope
+                scope = scope.parent
+            end
+        end
+            
+
+        # Recursively walks and yields each descendant scopes of this scope.
+        def walk_children(inc_self = false, &blk)
+            yield self if inc_self
+            @children.each do |child|
+                yield child
+                child.walk_children(&blk)
+            end
         end
 
 
@@ -53,23 +101,32 @@ module ArgParser
         #   line definition.
         def <<(arg)
             case arg
-            when PositionalArgument, KeywordArgument, FlagArgument, RestArgument
-                if @arguments[arg.key]
-                    raise ArgumentError, "An argument with key '#{arg.key}' has already been defined"
+            when CommandArgument, PositionalArgument, KeywordArgument, FlagArgument, RestArgument
+                if used = self.key_used?(arg.key)
+                    raise ArgumentError, "An argument with key '#{arg.key}' has already been defined: #{used}"
                 end
-                if arg.short_key && @short_keys[arg.short_key]
-                    raise ArgumentError, "The short key '#{arg.short_key}' has already been registered by the '#{
-                        @short_keys[arg.short_key]}' argument"
+                if arg.short_key && used = self.key_used?(arg.short_key)
+                    raise ArgumentError, "The short key '#{arg.short_key}' has already been registered: #{used}"
                 end
-                if arg.is_a?(RestArgument) && rest_args
+                if arg.is_a?(RestArgument) && rest_args?
                     raise ArgumentError, "Only one rest argument can be defined"
                 end
                 @arguments[arg.key] = arg
                 @short_keys[arg.short_key] = arg if arg.short_key
             else
-                raise ArgumentError, "arg must be an instance of PositionalArgument, KeywordArgument, " +
-                    "FlagArgument or RestArgument"
+                raise ArgumentError, "arg must be an instance of CommandArgument, PositionalArgument, " +
+                    "KeywordArgument, FlagArgument or RestArgument"
             end
+        end
+
+
+        # Add a command argument to the set of arguments in this command-line
+        # argument definition.
+        # @see CommandArgument#initialize
+        def command_arg(key, desc, opts = {}, &block)
+            cmd_arg = ArgParser::CommandArgument.new(key, desc, opts)
+            CommandBlock.new(self, cmd_arg, &block)
+            self << cmd_arg
         end
 
 
@@ -126,7 +183,251 @@ module ArgParser
         #   returned in the command-line parse results if no other value is
         #   specified.
         def predefined_arg(lookup_key, opts = {})
-            arg = Argument.lookup(lookup_key)
+            #arg = Argument.lookup(lookup_key)
+            arg = nil
+            self.walk_ancestors do |scope|
+                arg = scope.predefined_args && scope.predefined_args.has_key?(lookup_key)
+                break if arg
+            end
+            raise ArgumentError, "No predefined argument with key '#{lookup_key}' found" unless arg
+            arg.short_key = opts[:short_key] if opts.has_key?(:short_key)
+            arg.description = opts[:description] if opts.has_key?(:description)
+            arg.usage_break = opts[:usage_break] if opts.has_key?(:usage_break)
+            arg.required = opts[:required] if opts.has_key?(:required)
+            arg.default = opts[:default] if opts.has_key?(:default)
+            arg.on_parse = opts[:on_parse] if opts.has_key?(:on_parse)
+            self << arg
+        end
+
+
+        # @return [Array] all argument keys that have been defined.
+        def keys
+            @arguments.keys
+        end
+
+
+        # @return [Array] all argument short keys that have been defined.
+        def short_keys
+            @short_keys.keys
+        end
+
+
+        # @return [Array] all arguments that have been defined.
+        def args
+            @arguments.values
+        end
+
+
+        # @return [Array] all command arguments that have been defined
+        def command_args
+            @arguments.values.select{ |arg| CommandArgument === arg }
+        end
+
+
+        # @return True if a command arg has been defined
+        def command_args?
+            command_args.size > 0
+        end
+
+
+        # @return [Array] all positional arguments that have been defined
+        def positional_args
+            @arguments.values.select{ |arg| CommandArgument === arg ||
+                                            CommandInstance === arg ||
+                                            PositionalArgument === arg }
+        end
+
+
+        # @return True if any positional arguments have been defined.
+        def positional_args?
+            positional_args.size > 0
+        end
+
+
+        # @return [Array] the non-positional (i.e. keyword and flag)
+        #    arguments that have been defined.
+        def non_positional_args
+            @arguments.values.reject{ |arg| CommandArgument === arg || 
+                                            CommandInstance === arg ||
+                                            PositionalArgument === arg ||
+                                            RestArgument === arg }
+        end
+
+
+        # @return True if any non-positional arguments have been defined.
+        def non_positional_args?
+            non_positional_args.size > 0
+        end
+
+
+        # @return [Array] the keyword arguments that have been defined.
+        def keyword_args
+            @arguments.values.select{ |arg| KeywordArgument === arg }
+        end
+
+
+        # @return True if any keyword arguments have been defined.
+        def keyword_args?
+            keyword_args.size > 0
+        end
+
+
+        # @return [Array] the flag arguments that have been defined
+        def flag_args
+            @arguments.values.select{ |arg| FlagArgument === arg }
+        end
+
+
+        # @return True if any flag arguments have been defined.
+        def flag_args?
+            flag_args.size > 0
+        end
+
+
+        # @return [RestArgument] the RestArgument defined for this command-line,
+        #   or nil if no RestArgument is defined.
+        def rest_args
+            @arguments.values.find{ |arg| RestArgument === arg }
+        end
+
+
+        # @return True if a RestArgument has been defined.
+        def rest_args?
+            !!rest_args
+        end
+
+
+        # @return [Array] all the positional, keyword, and rest arguments
+        #   that have been defined.
+        def value_args
+            @arguments.values.select{ |arg| ValueArgument === arg }
+        end
+
+
+        # @return [Integer] the number of arguments that have been defined.
+        def size
+            @arguments.size
+        end
+
+    end
+
+
+    # Used to define arguments specific to a CommandInstance
+    class CommandBlock
+
+        def initialize(arg_scope, cmd_arg, &block)
+            @parent = arg_scope
+            @command_arg = cmd_arg
+            self.instance_eval(&block)
+        end
+
+
+        def define_args(&block)
+            pre_def_arg_scope = ArgumentScope.new("Predefined args for #{@command_arg}")
+            pre_def_arg_scope.instance_eval(&block)
+            @parent.predefined_args = pre_def_arg_scope
+        end
+
+
+        def command(key, desc, opts = {}, &block)
+            cmd_arg_scope = ArgumentScope.new("Arguments for #{key} command", @parent)
+            cmd_arg_scope.instance_eval(&block)
+            cmd_inst = CommandInstance.new(key, desc, @command_arg, cmd_arg_scope, opts)
+            @command_arg << cmd_inst
+        end
+
+    end
+
+
+    # Represents the collection of possible command-line arguments for a script.
+    class Definition < ArgumentScope
+
+        # @return [String] A title for the script, displayed at the top of the
+        #   usage and help outputs.
+        attr_accessor :title
+        # @return [String] A short description of the purpose of the script, for
+        #   display when showing the usage help.
+        attr_accessor :purpose
+        # @return [String] A copyright notice, displayed in the usage and help
+        #   outputs.
+        attr_accessor :copyright
+
+
+        # Create a new Definition, which is a collection of valid Arguments to
+        # be used when parsing a command-line.
+        def initialize(name = 'ArgParser::Definition')
+            super(name)
+            @require_set = []
+            @title = $0.respond_to?(:titleize) ? $0.titleize : $0
+            yield self if block_given?
+        end
+
+
+        # Collapses an ArgumentScope into this Definition, representing the
+        # collapsed argument possibilities once a command has been identitfied
+        # for a CommandArgument. Think of the original Definition as being a
+        # superposition of possible argument definitions, with one possible
+        # state for each CommandInstance of each commad. Once the actual
+        # CommandInstance is known, we are collapsing the superposition of
+        # possible definitions to a lower dimensionality; only one possible
+        # definition remains once all CommandArgument objects are replaced by
+        # CommandInstances.
+        #
+        # @param cmd_inst [CommandInstance] The instance of a command that has
+        #   been specified.
+        # @return [Definition] A new Definition with a set of arguments combined
+        #   from this Definition and the selected ArgumentScope for a specific
+        #   command instance.
+        def collapse(cmd_inst)
+            new_def = self.clone
+            child = cmd_inst.argument_scope
+            new_args = {}
+            new_short_keys = {}
+            @arguments.each do |key, arg|
+                if arg == cmd_inst.command_arg
+                    new_args[key] = cmd_inst
+                    child.walk_arguments do |key, arg|
+                        new_args[key] = arg
+                        new_short_keys[arg.short_key] = arg if arg.short_key
+                    end
+                else
+                    new_args[key] = arg
+                    new_short_keys[arg.short_key] = arg if arg.short_key
+                end
+            end
+            new_children = @children.reject{ |c| c == cmd_inst.argument_scope } &
+                child.instance_variable_get(:@children)
+            new_def.instance_variable_set(:@arguments, new_args)
+            new_def.instance_variable_set(:@short_keys, new_short_keys)
+            new_def.instance_variable_set(:@children, new_children)
+            new_def
+        end
+
+
+        # Lookup a pre-defined argument (created earlier via Argument#register),
+        # and add it to this arguments definition.
+        #
+        # @see Argument#register
+        #
+        # @param lookup_key [String, Symbol] The key under which the pre-defined
+        #   argument was registered.
+        # @param desc [String] An optional override for the argument description
+        #   for this use of the pre-defined argument.
+        # @param opts [Hash] An options hash for those select properties that
+        #   can be overridden on a pre-defined argument.
+        # @option opts [String] :description The argument description for this
+        #   use of the pre-defined argument.
+        # @option opts [String] :usage_break The usage break for this use of
+        #   the pre-defined argument.
+        # @option opts [Boolean] :required Whether this argument is a required
+        #   (i.e. mandatory) argument.
+        # @option opts [String] :default The default value for the argument,
+        #   returned in the command-line parse results if no other value is
+        #   specified.
+        def predefined_arg(lookup_key, opts = {})
+            # TODO: walk ancestor chain looking at pre-defined arg scopes
+            arg = (self.predefined_args && self.predefined_args.key_used?(lookup_key)) ||
+                Argument.lookup(lookup_key)
             arg.short_key = opts[:short_key] if opts.has_key?(:short_key)
             arg.description = opts[:description] if opts.has_key?(:description)
             arg.usage_break = opts[:usage_break] if opts.has_key?(:usage_break)
@@ -228,105 +529,12 @@ module ArgParser
         end
 
 
-        # @return [Array] all argument keys that have been defined.
-        def keys
-            @arguments.keys
-        end
-
-
-        # @return [Array] all argument short keys that have been defined.
-        def short_keys
-            @short_keys.keys
-        end
-
-
-        # @return [Array] all arguments that have been defined.
-        def args
-            @arguments.values
-        end
-
-
-        # @return [Array] all positional arguments that have been defined
-        def positional_args
-            @arguments.values.select{ |arg| PositionalArgument === arg }
-        end
-
-
-        # @return True if any positional arguments have been defined.
-        def positional_args?
-            positional_args.size > 0
-        end
-
-
-        # @return [Array] the non-positional (i.e. keyword and flag)
-        #    arguments that have been defined.
-        def non_positional_args
-            @arguments.values.reject{ |arg| PositionalArgument === arg || RestArgument === arg }
-        end
-
-
-        # @return True if any non-positional arguments have been defined.
-        def non_positional_args?
-            non_positional_args.size > 0
-        end
-
-
-        # @return [Array] the keyword arguments that have been defined.
-        def keyword_args
-            @arguments.values.select{ |arg| KeywordArgument === arg }
-        end
-
-
-        # @return True if any keyword arguments have been defined.
-        def keyword_args?
-            keyword_args.size > 0
-        end
-
-
-        # @return [Array] the flag arguments that have been defined
-        def flag_args
-            @arguments.values.select{ |arg| FlagArgument === arg }
-        end
-
-
-        # @return True if any flag arguments have been defined.
-        def flag_args?
-            flag_args.size > 0
-        end
-
-
-        # @return [RestArgument] the RestArgument defined for this command-line,
-        #   or nil if no RestArgument is defined.
-        def rest_args
-            @arguments.values.find{ |arg| RestArgument === arg }
-        end
-
-
-        # @return True if a RestArgument has been defined.
-        def rest_args?
-            !!rest_args
-        end
-
-
-        # @return [Array] all the positional, keyword, and rest arguments
-        #   that have been defined.
-        def value_args
-            @arguments.values.select{ |arg| ValueArgument === arg }
-        end
-
-
-        # @return [Integer] the number of arguments that have been defined.
-        def size
-            @arguments.size
-        end
-
-
         # Generates a usage display string
         def show_usage(out = STDERR, width = 80)
             lines = ['']
-            pos_args = positional_args
-            opt_args = size - pos_args.size
-            usage_args = pos_args.map(&:to_use)
+            usage_args = []
+            usage_args.append(positional_args.map(&:to_use))
+            opt_args = size - usage_args.size
             usage_args << (requires_some? ? 'OPTIONS' : '[OPTIONS]') if opt_args > 0
             usage_args << rest_args.to_use if rest_args?
             lines.concat(wrap_text("USAGE: #{RUBY_ENGINE} #{$0} #{usage_args.join(' ')}", width))
@@ -361,14 +569,15 @@ module ArgParser
             lines << '-----'
             pos_args = positional_args
             opt_args = size - pos_args.size
-            usage_args = pos_args.map(&:to_use)
+            usage_args = []
+            usage_args.append(pos_args.map(&:to_use))
             usage_args << (requires_some? ? 'OPTIONS' : '[OPTIONS]') if opt_args > 0
             usage_args << rest_args.to_use if rest_args?
             lines.concat(wrap_text("  #{RUBY_ENGINE} #{$0} #{usage_args.join(' ')}", width))
             lines << ''
 
             if positional_args?
-                max = positional_args.map{ |a| a.to_s.length }.max
+                max = positional_args.map{ |arg| arg.to_s.length }.max
                 pos_args = positional_args
                 pos_args << rest_args if rest_args?
                 pos_args.each do |arg|
@@ -384,11 +593,34 @@ module ArgParser
                 end
                 lines << ''
             end
+            if command_args?
+                max = command_args.reduce(0) do |max, cmd_arg|
+                    m = cmd_arg.commands.map{ |_, arg| arg.to_s.length }.max
+                    m > max ? m : max
+                end
+                command_args.each do |cmd_arg|
+                    lines << ''
+                    lines << "#{cmd_arg.to_use}S"
+                    lines << '--------'
+                    cmd_arg.commands.each do |_, arg|
+                        if arg.usage_break
+                            lines << ''
+                            lines << arg.usage_break
+                        end
+                        desc = arg.description
+                        wrap_text(desc, width - max - 6).each_with_index do |line, i|
+                            lines << "  %-#{max}s    %s" % [[arg.to_s][i], line]
+                        end
+                    end
+                    lines << ''
+                end
+            end
+
             if non_positional_args?
                 lines << ''
                 lines << 'OPTIONS'
                 lines << '-------'
-                max = non_positional_args.map{ |a| a.to_use.length }.max
+                max = non_positional_args.map{ |arg| arg.to_use.length }.max
                 non_positional_args.each do |arg|
                     if arg.usage_break
                         lines << ''
@@ -466,6 +698,7 @@ module ArgParser
         end
 
     end
+
 
 end
 
