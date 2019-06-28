@@ -7,7 +7,9 @@ module ArgParser
     }
     # Hash containing globally registered predefined arguments available via
     # #predefined_arg.
-    # TODO: Document preferred scoped usage
+    # Predefined arguments should normally be defined within an ArgumentScope,
+    # rather than globally. See DSL.define_args for pre-defining arguments on
+    # an including class, or use the argument creation methods on ArgumentScope,
     PredefinedArguments = { }
 
 
@@ -143,9 +145,8 @@ module ArgParser
     end
 
 
-    # An argument type that defines a command. Only a single command placeholder
-    # can be defined per ArgumentSet, but each command placeholder can have one
-    # or more command arguments (i.e. allowed values). Depending on the command,
+    # An argument type that defines a command. Each command placeholder can have
+    # one or more command arguments (i.e. allowed values). Depending on the command,
     # different additional arguments may then be specified in the command's
     # ArgumentSet.
     class CommandArgument < Argument
