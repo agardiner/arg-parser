@@ -586,7 +586,7 @@ module ArgParser
                         lines << arg.usage_break
                     end
                     desc = arg.description
-                    desc << "\n[Default: #{arg.default}]" unless arg.default.nil?
+                    desc += "\n[Default: #{arg.default}]" unless arg.default.nil?
                     wrap_text(desc, width - max - 6).each_with_index do |line, i|
                         lines << "  %-#{max}s    %s" % [[arg.to_s][i], line]
                     end
@@ -627,7 +627,7 @@ module ArgParser
                         lines << arg.usage_break
                     end
                     desc = arg.description
-                    desc << "\n[Default: #{arg.default}]" unless arg.default.nil?
+                    desc += "\n[Default: #{arg.default}]" unless arg.default.nil?
                     wrap_text(desc, width - max - 6).each_with_index do |line, i|
                         lines << "  %-#{max}s    %s" % [[arg.to_use][i], line]
                     end
