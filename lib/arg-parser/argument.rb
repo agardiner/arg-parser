@@ -166,6 +166,7 @@ module ArgParser
         def initialize(key, desc, opts = {})
             super(key, desc, opts)
             @commands = {}
+            @required = opts.fetch(:required, !opts.has_key?(:default))
             @usage_value = opts.fetch(:usage_value, key.to_s.gsub('_', '-').upcase)
         end
 
@@ -189,7 +190,7 @@ module ArgParser
         end
 
         def to_use
-            @usage_value
+            required? ? usage_value : "[#{usage_value}]"
         end
 
     end
