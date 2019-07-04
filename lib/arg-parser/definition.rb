@@ -533,7 +533,7 @@ module ArgParser
         def show_usage(out = STDERR, width = 80)
             lines = ['']
             usage_args = []
-            usage_args.append(positional_args.map(&:to_use))
+            usage_args.concat(positional_args.map(&:to_use))
             opt_args = size - usage_args.size
             usage_args << (requires_some? ? 'OPTIONS' : '[OPTIONS]') if opt_args > 0
             usage_args << rest_args.to_use if rest_args?
@@ -570,7 +570,7 @@ module ArgParser
             pos_args = positional_args
             opt_args = size - pos_args.size
             usage_args = []
-            usage_args.append(pos_args.map(&:to_use))
+            usage_args.concat(pos_args.map(&:to_use))
             usage_args << (requires_some? ? 'OPTIONS' : '[OPTIONS]') if opt_args > 0
             usage_args << rest_args.to_use if rest_args?
             lines.concat(wrap_text("  #{RUBY_ENGINE} #{$0} #{usage_args.join(' ')}", width))
