@@ -331,7 +331,7 @@ module ArgParser
 
         def command(key, desc, opts = {}, &block)
             cmd_arg_scope = ArgumentScope.new("Arguments for #{key} command", @parent)
-            cmd_arg_scope.instance_eval(&block)
+            cmd_arg_scope.instance_eval(&block) if block_given?
             cmd_inst = CommandInstance.new(key, desc, @command_arg, cmd_arg_scope, opts)
             @command_arg << cmd_inst
         end
