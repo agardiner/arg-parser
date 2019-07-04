@@ -208,6 +208,17 @@ module ArgParser
 
 
         def initialize(cmd_val, desc, cmd_arg, arg_scope, opts = {})
+            if cmd_arg.on_parse
+                if cmd_inst_op = opts[:on_parse]
+                    # Command and command instance both defined on_parse handlers
+                    opts[:on_parse] = lambda do |val, arg, hsh|
+                        cmd_arg.on_parse(val, arg, hsh)
+                        cmd_inst_op.on_parse(val, arg, hsh)
+                    end
+                else
+                    opts[:on_parse] = cmd_arg.on_parse
+                end
+            end
             super(cmd_arg.key, desc, opts)
             @command_value = cmd_val
             @command_arg = cmd_arg
