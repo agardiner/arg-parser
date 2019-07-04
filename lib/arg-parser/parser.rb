@@ -152,14 +152,20 @@ module ArgParser
                         kw_vals[arg] = token
                     elsif pos_args.size > 0
                         arg = pos_args.shift
-                        pos_vals << token
                         if CommandArgument === arg
-                            cmd_inst = arg[token]
-                            # Merge command's arg set with the current definition
-                            @definition = @definition.collapse(cmd_inst)
-                            # Insert command positional arguments
-                            pos_args.insert(0, *cmd_inst.argument_scope.positional_args)
+                            if cmd_inst = arg[token]
+                                # Merge command's arg set with the current definition
+                                @definition = @definition.collapse(cmd_inst)
+                                # Insert command positional arguments
+                                pos_args.insert(0, *cmd_inst.argument_scope.positional_args)
+                                pos_vals << cmd_inst.command_value
+                            else
+                                self.errors << "'#{token}' is not a valid value for #{arg}; valid values are: #{
+                                    arg.commands.keys.join(', ')}"
+                            end
                             arg = nil   # Commands can't be sensitive
+                        else
+                            pos_vals << token
                         end
                     else
                         rest_vals << token
