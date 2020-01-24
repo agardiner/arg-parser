@@ -281,7 +281,7 @@ module ArgParser
 
             # Call any registered on_parse handler
             begin
-                val = arg.on_parse.call(val, arg, hsh) if val && arg.on_parse
+                val = arg.on_parse.call(val, arg, hsh) if !val.nil? && arg.on_parse
             rescue StandardError => ex
                 self.errors << "An error occurred in the on_parse handler for argument '#{arg}': #{ex}"
                 return
