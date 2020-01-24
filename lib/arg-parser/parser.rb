@@ -120,10 +120,10 @@ module ArgParser
                 when /^[-\/]([a-z0-9]+)$/i
                     # One or more short keys
                     $1.to_s.each_char do |sk|
-                        kw_vals[arg] = nil if arg
+                        set_kw_val(kw_vals, arg, nil) if arg
                         arg = @definition[sk]
                         if FlagArgument === arg
-                            kw_vals[arg] = true
+                            set_kw_val(kw_vals, arg, true)
                             arg = nil
                         elsif PositionalArgument == arg
                             pos_args.delete(arg)
@@ -131,17 +131,18 @@ module ArgParser
                     end
                 when /^--(no[nt]?-)?(.+)/i
                     # Long key
-                    kw_vals[arg] = nil if arg
+                    set_kw_val(kw_vals, arg, nil) if arg
                     arg = @definition[$2]
                     if FlagArgument === arg || (KeywordArgument === arg && $1)
-                        kw_vals[arg] = $1 ? false : true
+                        set_kw_val(kw_vals, arg, $1 ? false : true)
                         arg = nil
                     elsif PositionalArgument === arg
                         pos_args.delete(arg)
                     end
                 when '--'
                     # All subsequent values are rest args
-                    kw_vals[arg] = nil if arg
+                    set_kw_val(kw_vals, arg, nil) if arg
+                    arg = nil
                     unless rest_vals.empty?
                         self.errors << "Too many positional arguments supplied before -- token"
                     end
@@ -149,7 +150,7 @@ module ArgParser
                     break
                 else
                     if arg
-                        kw_vals[arg] = token
+                        set_kw_val(kw_vals, arg, token)
                     elsif pos_args.size > 0
                         arg = pos_args.shift
                         if CommandArgument === arg
@@ -174,8 +175,15 @@ module ArgParser
                     arg = nil
                 end
             end
-            kw_vals[arg] = nil if arg
+            set_kw_val(kw_vals, arg, nil) if arg
             [pos_vals, kw_vals, rest_vals]
+        end
+
+
+        def set_kw_val(kw_vals, arg, val)
+            # Ensure kw_args are processed in order seen
+            kw_vals.delete(arg) if kw_vals.include?(arg)
+            kw_vals[arg] = val
         end
 
 
