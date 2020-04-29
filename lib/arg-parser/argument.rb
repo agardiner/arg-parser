@@ -190,7 +190,7 @@ module ArgParser
         end
 
         def to_use
-            required? ? usage_value : "[#{usage_value}]"
+            required? ? @usage_value : "[#{@usage_value}]"
         end
 
     end
