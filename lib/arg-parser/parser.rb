@@ -66,7 +66,14 @@ module ArgParser
             @show_help = nil
             @errors = []
             begin
-                pos_vals, kw_vals, rest_vals = classify_tokens(tokens)
+                case tokens
+                when Array
+                    pos_vals, kw_vals, rest_vals = classify_tokens(tokens)
+                when Hash
+                    pos_vals, kw_vals, rest_vals = classify_hash(tokens)
+                else
+                    raise ArgumentError, "Don't know how to parse arguments from #{tokens.class.name}"
+                end
                 args = process_args(pos_vals, kw_vals, rest_vals) unless @show_help
             rescue NoSuchArgumentError => ex
                 self.errors << ex.message
@@ -176,6 +183,43 @@ module ArgParser
                 end
             end
             set_kw_val(kw_vals, arg, nil) if arg
+            [pos_vals, kw_vals, rest_vals]
+        end
+
+
+        # Evaluate the key/value pairs in +hsh+, and return an array containing
+        # positional argument values, keyword argument values, and rest values.
+        #
+        # @param hsh [Hash] A Hash containing the arguments and their values to
+        #   be processed.
+        def classify_hash(hsh)
+            pos_vals = []
+            kw_vals = {}
+            rest_vals = hsh.delete(:rest) || []
+            pos_args = @definition.positional_args
+            hsh.each do |key, val|
+                key = key.intern
+                case key
+                when :help
+                    @show_help = val
+                else
+                    arg = @definitions[key]
+                    if CommandArgument === arg
+                        if cmd_inst = arg[token]
+                            # Merge command's arg set with the current definition
+                            @definition = @definition.collapse(cmd_inst)
+                            # Insert command positional arguments
+                            pos_args.insert(0, *cmd_inst.argument_scope.positional_args)
+                            pos_vals << cmd_inst.command_value
+                        else
+                            self.errors << "'#{token}' is not a valid value for #{arg}; valid values are: #{
+                                arg.commands.keys.join(', ')}"
+                        end
+                    else
+                        set_kw_val(kw_vals, arg, val)
+                    end
+                end
+            end
             [pos_vals, kw_vals, rest_vals]
         end
 
