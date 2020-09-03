@@ -174,14 +174,21 @@ module ArgParser
         # @return [Definition] The arguments Definition object defined on this
         #   class.
         def args_def
-            self.class.args_def
+            @args_def || self.class.args_def
         end
 
         # Defines a +parse_arguments+ instance method to be added to classes that
         # include this module. Uses the +args_def+ argument definition stored on
         # on the class to define the arguments to parse.
         def parse_arguments(args = ARGV)
-            args_def.parse(args)
+            parser = ArgParser::Parser.new(self.class.args_def)
+            result = parser.parse(args)
+            # As an arguments definition can change when command arguments are
+            # used, and we +collapse+ the arguments for each command into the
+            # Definition during parsing, we capture the collapsed Definition
+            # and save it on our object instance.
+            @args_def = parser.definition
+            result
         end
 
 
