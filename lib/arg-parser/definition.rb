@@ -41,11 +41,11 @@ module ArgParser
         #   if the key is not used.
         def key_used?(key)
             self.walk_ancestors do |anc|
-                arg = anc.has_key?(key)
+                arg = anc[key] if anc.has_key?(key)
                 return arg if arg
             end
             self.walk_children do |child|
-                arg = child.has_key?(key)
+                arg = child[key] if child.has_key?(key)
                 return arg if arg
             end
             nil
@@ -82,7 +82,7 @@ module ArgParser
         #   if it does not.
         def has_key?(key)
             k = Argument.to_key(key)
-            @arguments[k] || @short_keys[k]
+            @arguments.has_key?(k) || @short_keys.has_key?(k)
         end
 
 
@@ -90,7 +90,8 @@ module ArgParser
         # @raise [ArgumentError] if no argument has been defined with the
         #   specified key.
         def [](key)
-            arg = has_key?(key)
+            k = Argument.to_key(key)
+            arg = @arguments[k] || @short_keys[k]
             arg or raise NoSuchArgumentError, "No argument defined for key '#{Argument.to_key(key)}'"
         end
 
@@ -115,7 +116,7 @@ module ArgParser
                 @short_keys[arg.short_key] = arg if arg.short_key
             else
                 raise ArgumentError, "arg must be an instance of CommandArgument, PositionalArgument, " +
-                    "KeywordArgument, FlagArgument or RestArgument"
+                    "KeywordArgument, FlagArgument or RestArgument (got #{arg.class.name})"
             end
         end
 
@@ -183,11 +184,12 @@ module ArgParser
         #   returned in the command-line parse results if no other value is
         #   specified.
         def predefined_arg(lookup_key, opts = {})
-            #arg = Argument.lookup(lookup_key)
             arg = nil
             self.walk_ancestors do |scope|
-                arg = scope.predefined_args && scope.predefined_args.has_key?(lookup_key)
-                break if arg
+                if scope.predefines_args && scope.predefined_args.has_key?(lookup_key)
+                    arg = scope.predefined_args[lookup_key]
+                    break
+                end
             end
             raise ArgumentError, "No predefined argument with key '#{lookup_key}' found" unless arg
             arg.short_key = opts[:short_key] if opts.has_key?(:short_key)
@@ -301,6 +303,12 @@ module ArgParser
         #   that have been defined.
         def value_args
             @arguments.values.select{ |arg| ValueArgument === arg }
+        end
+
+
+        # @return [Array] all the sensitive arguments that have been defined
+        def sensitive_args
+            self.value_args.select{ |arg| arg.sensitive? }
         end
 
 
@@ -425,7 +433,6 @@ module ArgParser
         #   returned in the command-line parse results if no other value is
         #   specified.
         def predefined_arg(lookup_key, opts = {})
-            # TODO: walk ancestor chain looking at pre-defined arg scopes
             arg = (self.predefined_args && self.predefined_args.key_used?(lookup_key)) ||
                 Argument.lookup(lookup_key)
             arg.short_key = opts[:short_key] if opts.has_key?(:short_key)
