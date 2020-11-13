@@ -186,7 +186,7 @@ module ArgParser
         def predefined_arg(lookup_key, opts = {})
             arg = nil
             self.walk_ancestors do |scope|
-                if scope.predefines_args && scope.predefined_args.has_key?(lookup_key)
+                if scope.predefined_args && scope.predefined_args.has_key?(lookup_key)
                     arg = scope.predefined_args[lookup_key]
                     break
                 end
@@ -359,6 +359,9 @@ module ArgParser
         # @return [String] A copyright notice, displayed in the usage and help
         #   outputs.
         attr_accessor :copyright
+        # @return [Array] An array of entries consisting of the requirement type
+        # (:one or :any) followed by the argument keys that are required.
+        attr_reader :require_set
 
 
         # Create a new Definition, which is a collection of valid Arguments to
