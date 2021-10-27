@@ -215,7 +215,7 @@ module ArgParser
                             self.errors << "'#{token}' is not a valid value for #{arg}; valid values are: #{
                                 arg.commands.keys.join(', ')}"
                         end
-                    else
+                    elsif !val.nil?
                         set_kw_val(kw_vals, arg, val)
                     end
                 end
