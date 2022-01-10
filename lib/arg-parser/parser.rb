@@ -203,7 +203,7 @@ module ArgParser
                 when :help
                     @show_help = val
                 else
-                    arg = @definitions[key]
+                    arg = @definition[key]
                     if CommandArgument === arg
                         if cmd_inst = arg[token]
                             # Merge command's arg set with the current definition
@@ -215,7 +215,7 @@ module ArgParser
                             self.errors << "'#{token}' is not a valid value for #{arg}; valid values are: #{
                                 arg.commands.keys.join(', ')}"
                         end
-                    elsif !val.nil?
+                    elsif !val.nil? || (arg.is_a?(KeywordArgument) && arg.value_optional?)
                         set_kw_val(kw_vals, arg, val)
                     end
                 end
